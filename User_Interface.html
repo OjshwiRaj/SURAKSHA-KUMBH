@@ -665,8 +665,12 @@ document.addEventListener('DOMContentLoaded', applyI18n);
     </div>
 
     <!-- JAVASCRIPT LOGIC -->
-    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script>
+        // Fallback dummy socket if socket.io is unavailable
+        if (typeof io === 'undefined') {
+            window.io = () => ({ on: () => {}, emit: () => {}, connected: false });
+        }
         // --- 1. THEME SUPPORT (LIGHT THEME MAIN) ---
         function initTheme() {
             const savedTheme = localStorage.getItem('suraksha_theme') || 'light';

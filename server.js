@@ -1,19 +1,35 @@
 const express = require('express');
 const app = express();
+const http = require('http');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const axios = require('axios');
 
-// Load SSL Certificates
-const options = {
-    key: fs.readFileSync('key.pem'),
-    cert: fs.readFileSync('cert.pem')
-};
+// Environment check: Vercel serverless vs Local stand-alone
+const isVercel = process.env.VERCEL === '1' || process.env.NOW_REGION !== undefined;
+const certExists = fs.existsSync(path.join(__dirname, 'key.pem')) && fs.existsSync(path.join(__dirname, 'cert.pem'));
 
-const server = https.createServer(options, app);
-const io = require('socket.io')(server);
+let server;
+if (!isVercel && certExists) {
+    try {
+        const options = {
+            key: fs.readFileSync(path.join(__dirname, 'key.pem')),
+            cert: fs.readFileSync(path.join(__dirname, 'cert.pem'))
+        };
+        server = https.createServer(options, app);
+    } catch (err) {
+        console.warn("HTTPS certificate load error, falling back to HTTP:", err.message);
+        server = http.createServer(app);
+    }
+} else {
+    server = http.createServer(app);
+}
+
+const io = require('socket.io')(server, {
+    cors: { origin: "*" }
+});
 
 // Serve static files from the current directory
 app.use(express.static(__dirname));
@@ -219,15 +235,6 @@ function getLocalIp() {
 const PORT = process.env.PORT || 3000;
 const LOCAL_IP = getLocalIp();
 
-server.listen(PORT, '0.0.0.0', () => {
-    console.log(`\n======================================================`);
-    console.log(`🔱 SURAKSHA KUMBH SERVER RUNNING (Maha Kumbh 2026)`);
-    console.log(`Local Access:  https://localhost:${PORT}`);
-    console.log(`LAN / Hotspot: https://${LOCAL_IP}:${PORT} (Access from phones without internet!)`);
-    console.log(`Pilgrim App:   https://${LOCAL_IP}:${PORT}/user`);
-    console.log(`======================================================\n`);
-});
-
 // --- REAL-TIME DATA FETCHING (PRAYAGRAJ & SANGAM) ---
 const API_KEY = '427b095f5b1efd5d706bb36999355fb1';
 const LOC_PRAYAGRAJ = { lat: 25.4358, lon: 81.8463 }; // Prayagraj Sangam
@@ -276,6 +283,23 @@ async function fetchDisasterData() {
     }
 }
 
-// Fetch every 30 seconds
-setInterval(fetchDisasterData, 30000);
-fetchDisasterData();
+// Only listen if run directly (standalone / local), not on Vercel serverless
+if (!isVercel) {
+    server.listen(PORT, '0.0.0.0', () => {
+        console.log(`\n======================================================`);
+        console.log(`🔱 SURAKSHA KUMBH SERVER RUNNING (Maha Kumbh 2026)`);
+        console.log(`Local Access:  https://localhost:${PORT}`);
+        console.log(`LAN / Hotspot: https://${LOCAL_IP}:${PORT} (Access from phones without internet!)`);
+        console.log(`Pilgrim App:   https://${LOCAL_IP}:${PORT}/user`);
+        console.log(`======================================================\n`);
+    });
+
+    // Fetch every 30 seconds
+    setInterval(fetchDisasterData, 30000);
+}
+
+// Initial fetch
+fetchDisasterData().catch(() => {});
+
+// Export app for Vercel Serverless
+module.exports = app;
