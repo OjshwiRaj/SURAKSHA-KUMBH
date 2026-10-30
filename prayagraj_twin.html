@@ -40,7 +40,7 @@
       <h1>🔱 Prayagraj Sangam Digital Twin</h1>
       <div id="clock"></div>
     </div>
-    <a id="back" href="/">← Back to Command Center</a>
+    <a id="back" href="index.html">← Back to Command Center</a>
   </div>
 </div>
 <div id="legend">
@@ -238,9 +238,10 @@ async function pollCDSI(){
   try{
     const r=await fetch('/api/cdsi'); if(!r.ok)throw new Error(r.status);
     const data=await r.json();
-    const sectors=data.sectors||data;
+    const rawSectors=data.sectors||data;
+    const list=Array.isArray(rawSectors)?rawSectors:Object.entries(rawSectors).map(([k,v])=>({id:k,...v}));
     blobs.forEach(b=>{
-      const match=sectors.find(s=>s.id===b.sector.id||s.sector===b.sector.id);
+      const match=list.find(s=>s.id===b.sector.id||s.sector===b.sector.id||(s.name&&s.name.includes(b.sector.name.split(' ')[0])));
       if(match) updateBlob(b, parseFloat(match.density||match.cdsi||b.sector.density));
     });
     statusEl.textContent='✅ Live — '+new Date().toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata'});
