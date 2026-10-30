@@ -526,12 +526,15 @@ document.addEventListener('DOMContentLoaded', applyI18n);
                 </button>
 
                 <!-- REAL-TIME TACTICAL TERMINAL -->
-                <div class="bg-slate-900 text-emerald-400 p-4 rounded-xl border border-slate-800 font-mono text-[11px] space-y-1.5 h-48 overflow-y-auto custom-scroll" id="mesh-user-log">
+                <div class="bg-slate-900 text-emerald-400 p-4 rounded-xl border border-slate-800 font-mono text-[11px] space-y-1.5 h-36 overflow-y-auto custom-scroll" id="mesh-user-log">
                     <div class="text-slate-500">&gt;&gt; Suraksha Mesh Protocol v2.0 Initialized</div>
                     <div class="text-slate-500">&gt;&gt; Listening on P2P Channel 'suraksha_kumbh_mesh'</div>
                     <div class="text-cyan-400">&gt;&gt; Ready to hop packets across nearby devices without internet</div>
                 </div>
             </div>
+
+            <!-- OFFLINE TACTICAL WALKIE-TALKIE & MESH MESSENGER -->
+            <div id="user-mesh-chat-container"></div>
 
             <!-- ADDITIONAL SEVADAR & RECOGNITION BUTTONS -->
             <div class="grid grid-cols-2 gap-3">
@@ -1723,6 +1726,19 @@ document.addEventListener('DOMContentLoaded', applyI18n);
                     <div class="text-[9px] text-slate-400">${metrics['sangam-nose'].density} ppl/m²</div>
                 `;
             }
+        });
+    </script>
+    <script src="suraksha_guard.js"></script>
+    <script src="mesh_walkie_talkie.js"></script>
+    <script>
+        // Initialize Citizen / Sevadar Offline Tactical Walkie-Talkie
+        window.addEventListener('DOMContentLoaded', () => {
+            const sevadarId = 'SEVADAR-' + Math.floor(Math.random() * 899 + 100);
+            window.__surakshaMessenger = new SurakshaMeshMessenger({
+                nodeId: sevadarId,
+                role: 'Field Sevadar',
+                containerId: 'user-mesh-chat-container'
+            });
         });
     </script>
 </body>
