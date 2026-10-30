@@ -28,6 +28,11 @@ app.get('/user', (req, res) => {
     res.sendFile(path.join(__dirname, 'User_Interface.html'));
 });
 
+// 3D Digital Twin of Prayagraj Sangam
+app.get('/twin', (req, res) => {
+    res.sendFile(path.join(__dirname, 'prayagraj_twin.html'));
+});
+
 // Open Standard NDMA / ITU-T X.1303 CAP (Common Alerting Protocol) JSON Feed
 app.get('/api/cap', (req, res) => {
     res.json({

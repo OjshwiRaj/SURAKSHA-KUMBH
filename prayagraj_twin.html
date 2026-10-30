@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>🔱 Prayagraj Sangam Digital Twin</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:#f0f4f8;font-family:'Segoe UI',sans-serif;overflow:hidden;}
+  canvas{display:block;}
+  #ui{position:fixed;top:0;left:0;right:0;z-index:10;pointer-events:none;}
+  #header{background:rgba(15,23,42,0.88);backdrop-filter:blur(10px);
+    padding:10px 18px;display:flex;align-items:center;justify-content:space-between;
+    border-bottom:1px solid rgba(99,102,241,.4);}
+  #header h1{color:#fff;font-size:1.1rem;font-weight:700;letter-spacing:.02em;}
+  #clock{color:#94a3b8;font-size:.75rem;margin-top:2px;}
+  #back{pointer-events:all;background:#2563eb;color:#fff;border:none;
+    padding:6px 14px;border-radius:8px;font-size:.75rem;font-weight:700;
+    cursor:pointer;text-decoration:none;transition:background .2s;}
+  #back:hover{background:#1d4ed8;}
+  #legend{position:fixed;bottom:16px;left:16px;background:rgba(15,23,42,.85);
+    border-radius:12px;padding:12px 16px;pointer-events:none;z-index:10;}
+  #legend h3{color:#e2e8f0;font-size:.7rem;font-weight:700;margin-bottom:8px;
+    text-transform:uppercase;letter-spacing:.08em;}
+  .leg-row{display:flex;align-items:center;gap:8px;margin-bottom:5px;}
+  .leg-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;}
+  .leg-txt{color:#cbd5e1;font-size:.68rem;}
+  #hint{position:fixed;bottom:16px;right:16px;color:#64748b;font-size:.65rem;
+    pointer-events:none;z-index:10;text-align:right;}
+  #status{position:fixed;top:60px;right:14px;background:rgba(15,23,42,.75);
+    border-radius:8px;padding:5px 10px;color:#94a3b8;font-size:.65rem;z-index:10;
+    pointer-events:none;}
+</style>
+</head>
+<body>
+<div id="ui">
+  <div id="header">
+    <div>
+      <h1>🔱 Prayagraj Sangam Digital Twin</h1>
+      <div id="clock"></div>
+    </div>
+    <a id="back" href="/">← Back to Command Center</a>
+  </div>
+</div>
+<div id="legend">
+  <h3>Crowd Density</h3>
+  <div class="leg-row"><div class="leg-dot" style="background:#22c55e;"></div><span class="leg-txt">Safe &lt; 2.0 ppl/m²</span></div>
+  <div class="leg-row"><div class="leg-dot" style="background:#f59e0b;"></div><span class="leg-txt">Amber 2.0–3.5 ppl/m²</span></div>
+  <div class="leg-row"><div class="leg-dot" style="background:#ef4444;"></div><span class="leg-txt">Critical &gt; 3.5 ppl/m²</span></div>
+</div>
+<div id="status">⏳ Polling /api/cdsi…</div>
+<div id="hint">🖱 Drag to orbit &nbsp;|&nbsp; Scroll to zoom</div>
+
+<script>
+// ─── SCENE SETUP ────────────────────────────────────────────────────────────
+const W = window.innerWidth, H = window.innerHeight;
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(W, H);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xdbeafe);
+scene.fog = new THREE.FogExp2(0xdbeafe, 0.018);
+
+const camera = new THREE.PerspectiveCamera(55, W/H, 0.1, 500);
+camera.position.set(0, 28, 48);
+camera.lookAt(0, 0, 0);
+
+// ─── LIGHTING ────────────────────────────────────────────────────────────────
+const ambient = new THREE.AmbientLight(0xffffff, 0.55);
+scene.add(ambient);
+const sun = new THREE.DirectionalLight(0xfff4e0, 1.1);
+sun.position.set(30, 60, 20);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048,2048);
+sun.shadow.camera.near = 1; sun.shadow.camera.far = 200;
+sun.shadow.camera.left = sun.shadow.camera.bottom = -60;
+sun.shadow.camera.right = sun.shadow.camera.top = 60;
+scene.add(sun);
+const fill = new THREE.DirectionalLight(0xb3d4ff, 0.35);
+fill.position.set(-20, 20, -10); scene.add(fill);
+
+// ─── TERRAIN / GROUND ────────────────────────────────────────────────────────
+const groundGeo = new THREE.PlaneGeometry(120, 80, 30, 20);
+const posArr = groundGeo.attributes.position;
+for(let i=0;i<posArr.count;i++){
+  const x=posArr.getX(i), z=posArr.getZ(i);
+  posArr.setY(i, Math.sin(x*.15)*0.6+Math.cos(z*.2)*0.4);
+}
+groundGeo.computeVertexNormals();
+const groundMat = new THREE.MeshLambertMaterial({color:0xd4b483});
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI/2; ground.receiveShadow=true;
+scene.add(ground);
+
+// ─── RIVER PLANE (animated wave) ─────────────────────────────────────────────
+const riverGeo = new THREE.PlaneGeometry(60, 30, 60, 30);
+const riverMat = new THREE.MeshPhongMaterial({
+  color:0x1e6091, emissive:0x0a2e45, emissiveIntensity:0.2,
+  transparent:true, opacity:0.82, shininess:120, specular:0x88ccff
+});
+const river = new THREE.Mesh(riverGeo, riverMat);
+river.rotation.x = -Math.PI/2; river.position.set(0,0.15,0);
+scene.add(river);
+
+// ─── PONTOON BRIDGES ─────────────────────────────────────────────────────────
+const bridgeMat = new THREE.MeshLambertMaterial({color:0x8b7355});
+[[0,-8],[0,8]].forEach(([bx,bz])=>{
+  const bridge = new THREE.Mesh(new THREE.BoxGeometry(18,0.5,2.5), bridgeMat);
+  bridge.position.set(bx,0.6,bz); bridge.castShadow=true;
+  scene.add(bridge);
+  // pillars
+  for(let px=-7;px<=7;px+=3.5){
+    const pillar=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.2,2,8), bridgeMat);
+    pillar.position.set(bx+px,-.4,bz); scene.add(pillar);
+  }
+});
+
+// ─── GHATS (stone steps) ─────────────────────────────────────────────────────
+const ghatMat = new THREE.MeshLambertMaterial({color:0xc2b280});
+[[-28,-6],[-28,6],[28,-6],[28,6]].forEach(([gx,gz])=>{
+  for(let s=0;s<4;s++){
+    const step=new THREE.Mesh(new THREE.BoxGeometry(8,.35,4), ghatMat);
+    step.position.set(gx,s*.35-0.5,gz+s*.4); step.castShadow=true;
+    scene.add(step);
+  }
+});
+
+// ─── SECTOR DEFINITIONS ──────────────────────────────────────────────────────
+const SECTORS = [
+  {id:'SN',  label:'Sangam Nose',  pos:new THREE.Vector3( 2, 0, -1), density:4.2},
+  {id:'RG',  label:'Ram Ghat',     pos:new THREE.Vector3(-28, 0, 0),  density:3.1},
+  {id:'P3',  label:'Pontoon 3',    pos:new THREE.Vector3( 0, 0, -8),  density:1.8},
+  {id:'P4',  label:'Pontoon 4',    pos:new THREE.Vector3( 0, 0,  8),  density:2.6},
+  {id:'AG',  label:'Arail Ghat',   pos:new THREE.Vector3(28, 0,  0),  density:1.4},
+];
+
+function densityColor(d){
+  if(d<2.0) return new THREE.Color(0x22c55e);
+  if(d<3.5) return new THREE.Color(0xf59e0b);
+  return new THREE.Color(0xef4444);
+}
+function densityScale(d){ return 0.7 + Math.min(d/4,1)*1.6; }
+
+// Build blobs
+const blobs=[];
+SECTORS.forEach(s=>{
+  const r = densityScale(s.density);
+  const geo = new THREE.SphereGeometry(r, 16, 12);
+  const mat = new THREE.MeshPhongMaterial({
+    color: densityColor(s.density),
+    transparent:true, opacity:0.72, shininess:60
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(s.pos.x, r, s.pos.z);
+  mesh.castShadow=true; scene.add(mesh);
+
+  // Label sprite
+  const canvas=document.createElement('canvas');
+  canvas.width=256; canvas.height=80;
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,256,80);
+  ctx.fillStyle='rgba(15,23,42,0.82)';
+  ctx.beginPath(); ctx.roundRect(4,4,248,72,12); ctx.fill();
+  ctx.fillStyle='#f1f5f9'; ctx.font='bold 20px Segoe UI';
+  ctx.textAlign='center'; ctx.fillText(s.label,128,32);
+  ctx.fillStyle='#94a3b8'; ctx.font='15px Segoe UI';
+  ctx.fillText(s.density.toFixed(1)+' ppl/m²',128,56);
+  const tex=new THREE.CanvasTexture(canvas);
+  const spriteMat=new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false});
+  const sprite=new THREE.Sprite(spriteMat);
+  sprite.scale.set(8,2.5,1);
+  sprite.position.set(s.pos.x, r*2+2.5, s.pos.z);
+  scene.add(sprite);
+
+  blobs.push({mesh, mat, sprite, tex, canvas, ctx, sector:s, baseR:r});
+});
+
+// ─── BACKGROUND STRUCTURES (dome, tent clusters) ─────────────────────────────
+const tentMat=new THREE.MeshLambertMaterial({color:0xffffff});
+const domeMat=new THREE.MeshPhongMaterial({color:0xf97316,shininess:40});
+// Dome (Triveni Sangam marker)
+const dome=new THREE.Mesh(new THREE.SphereGeometry(2.5,16,8,0,Math.PI*2,0,Math.PI/2),domeMat);
+dome.position.set(2,0,-1); scene.add(dome);
+// Tent row
+for(let i=-3;i<=3;i++){
+  const tent=new THREE.Mesh(new THREE.ConeGeometry(1.2,2,4),tentMat);
+  tent.position.set(i*4,-0.2,-18); tent.castShadow=true; scene.add(tent);
+}
+
+// ─── ORBIT CONTROL (manual mouse drag) ───────────────────────────────────────
+let isDragging=false, lastX=0, lastY=0;
+let theta=0, phi=Math.PI/4, radius=55;
+renderer.domElement.addEventListener('mousedown',e=>{isDragging=true;lastX=e.clientX;lastY=e.clientY;});
+window.addEventListener('mouseup',()=>isDragging=false);
+window.addEventListener('mousemove',e=>{
+  if(!isDragging)return;
+  theta-=(e.clientX-lastX)*0.005;
+  phi=Math.max(0.15,Math.min(Math.PI/2.2,phi-(e.clientY-lastY)*0.004));
+  lastX=e.clientX; lastY=e.clientY;
+});
+renderer.domElement.addEventListener('wheel',e=>{
+  radius=Math.max(15,Math.min(90,radius+e.deltaY*0.06));
+},{passive:true});
+
+// ─── CLOCK ───────────────────────────────────────────────────────────────────
+const clockEl=document.getElementById('clock');
+function updateClock(){
+  clockEl.textContent='IST '+new Date().toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata'});
+}
+setInterval(updateClock,1000); updateClock();
+
+// ─── API POLL ─────────────────────────────────────────────────────────────────
+const statusEl=document.getElementById('status');
+function updateBlob(blob, density){
+  const c=densityColor(density); const r=densityScale(density);
+  blob.mat.color.set(c);
+  blob.mesh.scale.setScalar(r/blob.baseR);
+  blob.mesh.position.y = r;
+  blob.sprite.position.y = r*2+2.5;
+  blob.sector.density=density;
+  // Redraw label
+  const{canvas,ctx,sector}=blob;
+  ctx.clearRect(0,0,256,80);
+  ctx.fillStyle='rgba(15,23,42,0.82)'; ctx.beginPath();
+  ctx.roundRect(4,4,248,72,12); ctx.fill();
+  ctx.fillStyle='#f1f5f9'; ctx.font='bold 20px Segoe UI'; ctx.textAlign='center';
+  ctx.fillText(sector.label,128,32);
+  ctx.fillStyle=density>=3.5?'#fca5a5':density>=2?'#fde68a':'#86efac';
+  ctx.font='15px Segoe UI'; ctx.fillText(density.toFixed(1)+' ppl/m²',128,56);
+  blob.tex.needsUpdate=true;
+}
+async function pollCDSI(){
+  try{
+    const r=await fetch('/api/cdsi'); if(!r.ok)throw new Error(r.status);
+    const data=await r.json();
+    const sectors=data.sectors||data;
+    blobs.forEach(b=>{
+      const match=sectors.find(s=>s.id===b.sector.id||s.sector===b.sector.id);
+      if(match) updateBlob(b, parseFloat(match.density||match.cdsi||b.sector.density));
+    });
+    statusEl.textContent='✅ Live — '+new Date().toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata'});
+  }catch{statusEl.textContent='📡 Polling… (using demo data)';}
+}
+pollCDSI(); setInterval(pollCDSI,10000);
+
+// ─── RIVER WAVE ANIMATION ────────────────────────────────────────────────────
+const riverPos=riverGeo.attributes.position;
+const riverOrig=new Float32Array(riverPos.count*3);
+for(let i=0;i<riverPos.count;i++){
+  riverOrig[i*3]=riverPos.getX(i);
+  riverOrig[i*3+1]=riverPos.getY(i);
+  riverOrig[i*3+2]=riverPos.getZ(i);
+}
+
+// ─── MAIN ANIMATE LOOP ───────────────────────────────────────────────────────
+const clock=new THREE.Clock();
+function animate(){
+  requestAnimationFrame(animate);
+  const t=clock.getElapsedTime();
+
+  // Auto rotate when not dragging
+  if(!isDragging) theta+=0.002;
+
+  // Camera orbit
+  camera.position.x=Math.sin(theta)*radius*Math.cos(phi);
+  camera.position.y=radius*Math.sin(phi)+4;
+  camera.position.z=Math.cos(theta)*radius*Math.cos(phi);
+  camera.lookAt(0,2,0);
+
+  // River ripple
+  for(let i=0;i<riverPos.count;i++){
+    const ox=riverOrig[i*3], oz=riverOrig[i*3+2];
+    riverPos.setY(i, Math.sin(ox*0.3+t*1.2)*0.18+Math.cos(oz*0.4+t*0.9)*0.12);
+  }
+  riverPos.needsUpdate=true; riverGeo.computeVertexNormals();
+
+  // Pulse danger blobs
+  blobs.forEach(b=>{
+    if(b.sector.density>=3.5){
+      const pulse=1+Math.sin(t*3)*0.12;
+      b.mesh.scale.setScalar(densityScale(b.sector.density)/b.baseR*pulse);
+    }
+  });
+
+  renderer.render(scene,camera);
+}
+animate();
+
+// ─── RESIZE ──────────────────────────────────────────────────────────────────
+window.addEventListener('resize',()=>{
+  camera.aspect=window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth,window.innerHeight);
+});
+</script>
+</body>
+</html>

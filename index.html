@@ -125,24 +125,31 @@
 
             <!-- CONTROLS: THEME SWITCHER, LANGUAGE, CLOCK -->
             <div class="flex items-center gap-2.5">
-                
+                <!-- 3D TWIN LINK -->
+                <a href="/twin" target="_blank" class="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+                    <i class="fas fa-cube"></i>
+                    <span class="hidden md:inline">3D Twin</span>
+                </a>
+
                 <!-- LIGHT / DARK THEME TOGGLE BUTTON -->
                 <button onclick="toggleTheme()" id="theme-toggle-btn"
                     class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-amber-400 transition cursor-pointer flex items-center gap-1.5 text-xs font-bold"
                     title="Toggle Light / Dark Mode">
                     <i class="fas fa-sun text-amber-500 dark:hidden"></i>
                     <i class="fas fa-moon text-blue-400 hidden dark:inline"></i>
-                    <span class="hidden md:inline dark:hidden">Light</span>
-                    <span class="hidden md:inline hidden dark:inline">Dark</span>
                 </button>
 
-                <!-- LANGUAGE SELECTOR -->
-                <select onchange="changeLanguage(this.value)"
-                    class="bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none cursor-pointer">
-                    <option value="en">🇬🇧 English</option>
-                    <option value="hi" selected>🇮🇳 हिन्दी</option>
+                <!-- LANGUAGE SELECTOR (8 Languages) -->
+                <select onchange="changeLanguage(this.value)" id="admin-lang-select"
+                    class="bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-bold px-2.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none cursor-pointer">
+                    <option value="hi">🇮🇳 हिन्दी</option>
+                    <option value="en">🇬🇧 EN</option>
                     <option value="mr">🇮🇳 मराठी</option>
                     <option value="bn">🇮🇳 বাংলা</option>
+                    <option value="ta">🇮🇳 தமிழ்</option>
+                    <option value="te">🇮🇳 తెలుగు</option>
+                    <option value="gu">🇮🇳 ગુજ.</option>
+                    <option value="pa">🇮🇳 ਪੰਜਾਬੀ</option>
                 </select>
 
                 <div class="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-mono font-semibold text-slate-600 dark:text-slate-400">
@@ -930,16 +937,64 @@
                 tab_resources: "সম্পদ বরাদ্দ",
                 tab_incidents: "ঘটনা লগ",
                 tab_lost_volunteers: "নিখোঁজ ও স্বেচ্ছাসেবক"
+            },
+            ta: {
+                admin_subtitle: "மகாகும்ப மேளா மையக் கட்டளை & கூட்ட பாதுகாப்பு வலைப்பின்னல்",
+                tab_live_ops: "நேரடி வரைபடம்",
+                tab_resources: "வளம் ஒதுக்கீடு",
+                tab_incidents: "சம்பவ கட்டளை",
+                tab_lost_volunteers: "காணாமல் போனோர்"
+            },
+            te: {
+                admin_subtitle: "మహాకుంభ కేంద్ర కమాండ్ & జనసమూహ భద్రతా నెట్‌వర్క్",
+                tab_live_ops: "లైవ్ మ్యాప్",
+                tab_resources: "వనరుల కేటాయింపు",
+                tab_incidents: "సంఘటన కమాండ్",
+                tab_lost_volunteers: "తప్పిపోయినవారు"
+            },
+            gu: {
+                admin_subtitle: "મહાકુંભ કેન્દ્રીય આદેશ & ભીડ સુરક્ષા નેટવર્ક",
+                tab_live_ops: "લાઇવ નકશો",
+                tab_resources: "સંસાધન ફાળવણી",
+                tab_incidents: "ઘટના આદેશ",
+                tab_lost_volunteers: "ગુમ-પ્રાપ્ત"
+            },
+            pa: {
+                admin_subtitle: "ਮਹਾਕੁੰਭ ਕੇਂਦਰੀ ਕਮਾਂਡ ਅਤੇ ਭੀੜ ਸੁਰੱਖਿਆ ਨੈੱਟਵਰਕ",
+                tab_live_ops: "ਲਾਈਵ ਨਕਸ਼ਾ",
+                tab_resources: "ਸਾਧਨ ਵੰਡ",
+                tab_incidents: "ਘਟਨਾ ਕਮਾਂਡ",
+                tab_lost_volunteers: "ਗੁੰਮ ਵਿਅਕਤੀ"
             }
         };
 
         function changeLanguage(lang) {
-            const t = translations[lang];
-            if (!t) return;
+            const t = translations[lang] || translations.hi;
             document.querySelectorAll('[data-i18n]').forEach(el => {
                 const key = el.getAttribute('data-i18n');
                 if (t[key]) el.innerText = t[key];
             });
+            const sel = document.getElementById('admin-lang-select');
+            if (sel) sel.value = lang;
+        }
+
+        // Admin toast (no blocking alert())
+        function showAdminToast(msg, type = 'info') {
+            let container = document.getElementById('admin-toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'admin-toast-container';
+                container.className = 'fixed top-20 right-4 z-[3500] flex flex-col gap-2 max-w-sm pointer-events-none';
+                document.body.appendChild(container);
+            }
+            const bg = type === 'error' ? 'bg-red-600' : type === 'success' ? 'bg-emerald-600' : 'bg-slate-900';
+            const icon = type === 'error' ? 'fa-exclamation-circle text-red-200' : type === 'success' ? 'fa-check-circle text-emerald-200' : 'fa-info-circle text-orange-300';
+            const toast = document.createElement('div');
+            toast.className = `${bg} text-white text-xs font-bold px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2.5 pointer-events-auto transition-all opacity-0`;
+            toast.innerHTML = `<i class="fas ${icon}"></i><span class="flex-grow">${msg}</span>`;
+            container.appendChild(toast);
+            requestAnimationFrame(() => toast.classList.remove('opacity-0'));
+            setTimeout(() => { toast.style.opacity = 0; setTimeout(() => toast.remove(), 400); }, 4000);
         }
 
         // --- 3. TAB NAVIGATION ---
@@ -1092,7 +1147,7 @@
             meshChannel.postMessage(pingPacket);
             socket.emit('MESH_PACKET', pingPacket);
             logMeshTerminal(`&gt;&gt; TX [PING]: Broadcasted packet ${pingPacket.packetId} into mesh...`);
-            alert("📡 Test Mesh Ping broadcasted across local P2P mesh network!");
+            showAdminToast("📡 Mesh Ping sent!", 'info');
         }
 
         function logMeshTerminal(msg) {
@@ -1222,7 +1277,7 @@
             const res = resourceCatalog[resourceId];
             if (!res) return;
             if (res.avail <= 0) {
-                alert(`❌ ${res.name} is out of stock!`);
+                showAdminToast(`❌ ${res.name} is out of stock!`, 'error');
                 return;
             }
 
@@ -1260,7 +1315,7 @@
 
         function smartAutoAllocate() {
             if (pendingAidRequests.length === 0) {
-                alert("✅ All pending aid requests are fulfilled!");
+                showAdminToast("✅ All requests fulfilled!", 'success');
                 return;
             }
 
@@ -1290,7 +1345,7 @@
             renderResourceCards();
             renderRequestsQueue();
             updateKPIs();
-            alert(`⚡ Smart Auto-Allocate Complete!\nDispatched supplies for ${count} queued request(s).`);
+            showAdminToast(`⚡ Auto-Allocate complete —  requests dispatched!`, 'success');
         }
 
         function resolveResourceKey(text = '') {
@@ -1372,7 +1427,7 @@
             const res = resourceCatalog[resKey];
 
             if (res && res.avail < req.quantity) {
-                alert(`❌ Insufficient stock of ${res.name}.`);
+                showAdminToast(`❌ Insufficient: ${res.name}`, 'error');
                 return;
             }
 
@@ -1660,7 +1715,7 @@
             });
 
             document.getElementById('clear-btn')?.classList.remove('hidden');
-            alert(`🚨 EMERGENCY BROADCAST SENT: ${type} across ${zone}`);
+            showAdminToast(`🚨 EMERGENCY BROADCAST SENT: ${type} across ${zone}`, 'error');
         }
 
         function clearDisaster() {
@@ -1669,7 +1724,7 @@
                 time: new Date().toLocaleTimeString()
             });
             document.getElementById('clear-btn')?.classList.add('hidden');
-            alert("✅ ALL CLEAR SIGNAL SENT.");
+            showAdminToast("✅ ALL CLEAR SIGNAL SENT.", 'success');
         }
 
         function showStoredImage(rowId) {
@@ -1813,7 +1868,7 @@
                 currentCdsiData[fromKey].density = Math.max(1.8, (currentCdsiData[fromKey].density - 0.8).toFixed(1));
             }
             renderCdsiSectors();
-            alert(`🔀 DIVERSION ENGAGED:\nInflow at ${fromSec} stopped.\nPilgrims actively rerouted to ${toSec}!`);
+            showAdminToast(`🔀 Diversion active: ${fromSec} → ${toSec}`, 'info');
         }
 
         function setFestivalProtocol(mode) {
@@ -1826,7 +1881,7 @@
                 btnNormal.className = "px-3 py-1.5 rounded-lg text-xs font-bold text-white hover:bg-white/20 transition";
                 badge.innerText = "SHAHI SNAN EMERGENCY PROTOCOL ACTIVE";
                 badge.className = "px-2 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-black animate-pulse";
-                alert("🔱 SHAHI SNAN PROTOCOL ACTIVATED:\n• One-Way Pedestrian Ring Enforced\n• 40 NDRF Rescue Boats Dispatched\n• Pontoon Capacity Capped to 75%");
+                showAdminToast("🔱 Shahi Snan Protocol Active — NDRF & Barricades Engaged!", 'error');
             } else {
                 btnNormal.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-orange-700 shadow-sm transition";
                 btnShahi.className = "px-3 py-1.5 rounded-lg text-xs font-bold text-white hover:bg-white/20 transition flex items-center gap-1.5";
@@ -1873,7 +1928,7 @@
             const headlineEn = document.getElementById('cap-headline-en').value.trim();
             const headlineHi = document.getElementById('cap-headline-hi').value.trim();
             if (!headlineEn && !headlineHi) {
-                alert('Please provide an alert headline in English or Hindi.');
+                showAdminToast('Please provide a headline.', 'error');
                 return;
             }
 
@@ -1919,7 +1974,7 @@
 
             capAlertsStore.unshift(capAlert);
             renderCapAlerts();
-            alert(`🚨 ITU-T CAP ALERT BROADCASTED:\nID: ${alertId}\nSeverity: ${severity}\nRelayed via Internet & Offline Mesh Radio!`);
+            showAdminToast(`🚨 CAP Alert Broadcasted: ${severity} — ${headlineEn || headlineHi}`, 'error');
         }
 
         function renderCapAlerts(alerts) {
