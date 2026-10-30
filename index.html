@@ -176,6 +176,12 @@
                 <span>Offline Mesh Network</span>
                 <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             </button>
+            <button onclick="switchTab('tab-cap-cdsi')" id="nav-btn-cap-cdsi"
+                class="tab-btn px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700">
+                <i class="fas fa-tower-broadcast text-rose-500"></i>
+                <span>NDMA CAP & Crowd Surge (CDSI)</span>
+                <span id="cap-active-badge" class="px-1.5 py-0.2 rounded-full bg-rose-600 text-white text-[10px] font-black">1</span>
+            </button>
             <button onclick="switchTab('tab-lost-volunteers')" id="nav-btn-lost-volunteers"
                 class="tab-btn px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700">
                 <i class="fas fa-hands-holding-child text-blue-500"></i>
@@ -692,6 +698,164 @@
                     <div class="text-center py-12 text-slate-400 text-xs">
                         <i class="fas fa-id-card-clip text-3xl mb-2 opacity-40 text-blue-500"></i>
                         <p>Volunteers who register via the citizen app will be listed here for task deployment.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TAB 6: NDMA CAP ALERTS & CROWD SURGE (CDSI) -->
+        <!-- ========================================== -->
+        <div id="tab-cap-cdsi" class="tab-content hidden flex flex-col gap-5">
+            <!-- SHAHI SNAN & FESTIVAL PROTOCOL STATUS -->
+            <div class="bg-gradient-to-r from-orange-500 via-amber-600 to-rose-600 p-4 rounded-2xl text-white shadow-md flex flex-col md:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-2xl">
+                        🔱
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="px-2 py-0.5 rounded-full bg-white/30 text-[10px] font-black tracking-widest uppercase">Maha Kumbh 2026 Protocol</span>
+                            <span id="protocol-badge" class="px-2 py-0.5 rounded-full bg-emerald-400 text-slate-900 text-[10px] font-bold">Standard Day Protocol Active</span>
+                        </div>
+                        <h2 class="text-base font-extrabold mt-0.5">Crowd Surge Early Warning & NDMA Common Alerting Protocol (CAP)</h2>
+                        <p class="text-xs text-orange-100">Synchronized with NDMA SACHET, Prayagraj ICCC, & SDRF River Guard</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 bg-black/20 p-1.5 rounded-xl backdrop-blur-sm">
+                    <button onclick="setFestivalProtocol('normal')" id="proto-btn-normal" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-orange-700 shadow-sm transition">Standard Day</button>
+                    <button onclick="setFestivalProtocol('shahi_snan')" id="proto-btn-shahi" class="px-3 py-1.5 rounded-lg text-xs font-bold text-white hover:bg-white/20 transition flex items-center gap-1.5">
+                        <i class="fas fa-crown text-amber-300"></i>
+                        <span>Shahi Snan (High Alert)</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- LIVE CROWD DENSITY SURGE INDEX (CDSI) METRICS -->
+            <div class="bg-white dark:bg-[#111827] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 border-b border-slate-100 dark:border-slate-800 pb-3">
+                    <div class="flex items-center gap-2.5">
+                        <div class="p-2 rounded-xl bg-orange-100 dark:bg-orange-500/20 text-orange-600">
+                            <i class="fas fa-chart-line text-base"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">Kumbh Crowd Density Surge Index (CDSI)</h3>
+                            <p class="text-[10px] text-slate-500">Early-warning telemetry across critical bottlenecks & pontoon bridges</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 text-[11px]">
+                        <span class="flex items-center gap-1 text-emerald-600 font-semibold"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> &lt;2.0/m² Safe</span>
+                        <span class="flex items-center gap-1 text-amber-600 font-semibold"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> 2.0-3.5/m² Warning</span>
+                        <span class="flex items-center gap-1 text-rose-600 font-semibold"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></span> &gt;3.5/m² Stampede Risk</span>
+                    </div>
+                </div>
+
+                <!-- SECTORS GRID -->
+                <div id="cdsi-sectors-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Populated dynamically via JS -->
+                </div>
+            </div>
+
+            <!-- NDMA / ITU-T X.1303 CAP ALERT BROADCASTER & ACTIVE ALERTS -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+                <!-- COMPOSER (LEFT) -->
+                <div class="lg:col-span-5 bg-white dark:bg-[#111827] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col gap-4">
+                    <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                        <div class="flex items-center gap-2.5">
+                            <div class="p-2 rounded-xl bg-rose-100 dark:bg-rose-500/20 text-rose-600">
+                                <i class="fas fa-tower-broadcast text-base"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">NDMA SACHET / CAP Broadcaster</h3>
+                                <p class="text-[10px] text-slate-500">ITU-T X.1303 Standard Common Alerting Protocol v1.2</p>
+                            </div>
+                        </div>
+                        <span class="px-2 py-0.5 rounded bg-rose-50 dark:bg-rose-950/60 text-rose-600 text-[10px] font-mono font-bold">ITU-T X.1303</span>
+                    </div>
+
+                    <!-- PRESET TEMPLATES -->
+                    <div>
+                        <label class="text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1.5 block">Kumbh Quick Presets:</label>
+                        <div class="grid grid-cols-2 gap-1.5">
+                            <button onclick="applyCapPreset('bridge_surge')" class="px-2 py-1.5 rounded-lg text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-orange-50 dark:hover:bg-orange-950 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-left transition truncate">
+                                🌉 Pontoon Bridge Surge
+                            </button>
+                            <button onclick="applyCapPreset('sangam_water')" class="px-2 py-1.5 rounded-lg text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-950 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-left transition truncate">
+                                🌊 Sangam High Current
+                            </button>
+                            <button onclick="applyCapPreset('diversion_active')" class="px-2 py-1.5 rounded-lg text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-amber-50 dark:hover:bg-amber-950 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-left transition truncate">
+                                🔀 Route Diversion Alert
+                            </button>
+                            <button onclick="applyCapPreset('fire_smoke')" class="px-2 py-1.5 rounded-lg text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-left transition truncate">
+                                🔥 Camp Fire / Hazard
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- CAP FIELDS -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-[10px] font-bold uppercase text-slate-500 block mb-1">Severity</label>
+                            <select id="cap-severity" class="w-full text-xs font-semibold px-2.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white">
+                                <option value="Extreme">Extreme (अत्यधिक)</option>
+                                <option value="Severe" selected>Severe (गंभीर)</option>
+                                <option value="Moderate">Moderate (मध्यम)</option>
+                                <option value="Minor">Minor (सामान्य)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold uppercase text-slate-500 block mb-1">Urgency</label>
+                            <select id="cap-urgency" class="w-full text-xs font-semibold px-2.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white">
+                                <option value="Immediate" selected>Immediate (तत्काल)</option>
+                                <option value="Expected">Expected (प्रत्याशित)</option>
+                                <option value="Future">Future (भावी)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-[10px] font-bold uppercase text-slate-500 block mb-1">English Headline</label>
+                        <input id="cap-headline-en" type="text" placeholder="e.g. Critical Crowd Bottleneck at Pontoon Bridge 4" class="w-full text-xs px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white">
+                    </div>
+
+                    <div>
+                        <label class="text-[10px] font-bold uppercase text-slate-500 block mb-1">Hindi Headline (हिन्दी शीर्षक)</label>
+                        <input id="cap-headline-hi" type="text" placeholder="उदा. पांटून पुल संख्या 4 पर अत्यधिक भीड़ - तुरंत मार्ग बदलें" class="w-full text-xs px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white">
+                    </div>
+
+                    <div>
+                        <label class="text-[10px] font-bold uppercase text-slate-500 block mb-1">Target Sectors / Area</label>
+                        <input id="cap-area-desc" type="text" value="Sector 3 & 4 (Pontoon 3-4), Prayagraj Sangam" class="w-full text-xs px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white">
+                    </div>
+
+                    <div class="flex gap-2 pt-1">
+                        <button onclick="broadcastCapAlert()" class="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md shadow-rose-600/30 transition flex items-center justify-center gap-2">
+                            <i class="fas fa-bullhorn"></i>
+                            <span>Broadcast CAP Alert</span>
+                        </button>
+                        <button onclick="downloadCapJson()" class="px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 font-bold text-xs border border-slate-200 dark:border-slate-700 transition" title="Export ITU-T CAP JSON">
+                            <i class="fas fa-file-code"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ACTIVE CAP ALERTS FEED (RIGHT) -->
+                <div class="lg:col-span-7 bg-white dark:bg-[#111827] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col gap-4">
+                    <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                        <div class="flex items-center gap-2.5">
+                            <div class="p-2 rounded-xl bg-amber-100 dark:bg-amber-500/20 text-amber-600">
+                                <i class="fas fa-satellite-dish text-base"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">Active CAP Alerts Log (सक्रिय आपदा चेतावनियाँ)</h3>
+                                <p class="text-[10px] text-slate-500">Live alerts broadcasted to all citizen apps & mesh radio relays</p>
+                            </div>
+                        </div>
+                        <span id="active-cap-count" class="px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950 text-rose-600 font-black text-xs">1 Active</span>
+                    </div>
+
+                    <div id="active-cap-list" class="space-y-3 overflow-y-auto custom-scroll max-h-[500px]">
+                        <!-- Populated dynamically via JS -->
                     </div>
                 </div>
             </div>
@@ -1520,6 +1684,334 @@
         function closeImageModal() {
             document.getElementById('image-modal').classList.add('hidden');
         }
+
+        // ========================================================
+        // --- 9. NDMA SACHET / ITU-T X.1303 CAP & CDSI PROTOCOL ---
+        // ========================================================
+        let currentCdsiData = {
+            "sangam-nose": { name: "Sangam Nose (Main Ghat)", density: 3.8, capacity: 85, status: "WARNING", flowRate: "+420/min", sector: 1 },
+            "ram-ghat": { name: "Ram Ghat & Dashashwamedh", density: 2.1, capacity: 55, status: "NORMAL", flowRate: "+180/min", sector: 2 },
+            "pontoon-3": { name: "Pontoon Bridge #3 (Daraganj)", density: 4.1, capacity: 92, status: "CRITICAL", flowRate: "+580/min", sector: 3 },
+            "pontoon-4": { name: "Pontoon Bridge #4 (Jhunsi)", density: 3.9, capacity: 88, status: "WARNING", flowRate: "+490/min", sector: 4 },
+            "arail-ghat": { name: "Arail Ghat (South Bank)", density: 1.4, capacity: 35, status: "NORMAL", flowRate: "+90/min", sector: 6 },
+            "holding-jhunsi": { name: "Jhunsi Holding Paddock", density: 1.1, capacity: 28, status: "BUFFER_READY", flowRate: "-120/min", sector: 8 }
+        };
+
+        let capAlertsStore = [
+            {
+                identifier: "CAP-IN-UP-KUMBH-2026-001",
+                sender: "UP-SDMA-ICCC-PRAYAGRAJ",
+                sent: new Date().toLocaleTimeString(),
+                status: "Actual",
+                msgType: "Alert",
+                info: {
+                    severity: "Severe",
+                    urgency: "Immediate",
+                    headline: "Heavy Crowd Surge at Pontoon Bridge #4 (Ganga)",
+                    headline_hi: "पांटून पुल संख्या 4 पर अत्यधिक भीड़ का दबाव - मार्ग परिवर्तन",
+                    areaDesc: "Sector 3 & 4 (Pontoon 3-4), Prayagraj Sangam",
+                    instruction: "Use southern pedestrian ramp. Do not crowd on floating bridge pontoons."
+                }
+            }
+        ];
+
+        function renderCdsiSectors(metrics) {
+            currentCdsiData = metrics || currentCdsiData;
+            const container = document.getElementById('cdsi-sectors-grid');
+            if (!container) return;
+
+            container.innerHTML = Object.entries(currentCdsiData).map(([secKey, sec]) => {
+                let badgeClass = "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400";
+                let barColor = "bg-emerald-500";
+                let statusLabel = "SAFE FLOW";
+
+                if (sec.density >= 4.0 || sec.status === 'CRITICAL') {
+                    badgeClass = "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400 animate-pulse";
+                    barColor = "bg-rose-600";
+                    statusLabel = "CRITICAL BOTTLE-NECK";
+                } else if (sec.density >= 3.0 || sec.status === 'WARNING') {
+                    badgeClass = "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400";
+                    barColor = "bg-amber-500";
+                    statusLabel = "HIGH DENSITY";
+                } else if (sec.status === 'BUFFER_READY') {
+                    badgeClass = "bg-cyan-100 text-cyan-700 dark:bg-cyan-950/60 dark:text-cyan-400";
+                    barColor = "bg-cyan-500";
+                    statusLabel = "DIVERSION BUFFER READY";
+                } else if (sec.status === 'DIVERTING') {
+                    badgeClass = "bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-400 font-bold";
+                    barColor = "bg-purple-600";
+                    statusLabel = "DIVERSION IN EFFECT";
+                }
+
+                return `
+                    <div class="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 flex flex-col justify-between gap-3">
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <span class="text-[9px] font-mono px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">Sector ${sec.sector}</span>
+                                <h4 class="font-extrabold text-sm text-slate-900 dark:text-white mt-1">${sec.name}</h4>
+                            </div>
+                            <span class="text-[10px] font-black px-2 py-0.5 rounded-full ${badgeClass}">${statusLabel}</span>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between items-baseline text-xs mb-1">
+                                <span class="text-slate-500 text-[11px]">Crowd Density</span>
+                                <span class="font-mono font-bold text-slate-800 dark:text-slate-200">${sec.density} <span class="text-[10px] text-slate-400">ppl/m²</span></span>
+                            </div>
+                            <div class="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+                                <div class="${barColor} h-full transition-all duration-500" style="width: ${Math.min(sec.capacity, 100)}%"></div>
+                            </div>
+                            <div class="flex justify-between text-[10px] text-slate-400 mt-1">
+                                <span>Capacity: ${sec.capacity}%</span>
+                                <span class="font-mono">${sec.flowRate}</span>
+                            </div>
+                        </div>
+
+                        ${sec.density >= 3.5 ? `
+                            <button onclick="triggerDiversion('${secKey}', 'holding-jhunsi')" class="w-full py-1.5 rounded-lg bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm">
+                                <i class="fas fa-shuffle"></i>
+                                <span>Engage Holding Paddock Diversion</span>
+                            </button>
+                        ` : `
+                            <div class="text-[10px] text-slate-400 text-center py-1 bg-slate-100 dark:bg-slate-800/80 rounded-lg">
+                                Flow Nominal • Normal Ingress
+                            </div>
+                        `}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function triggerDiversion(fromKey, toKey) {
+            const fromSec = currentCdsiData[fromKey]?.name || fromKey;
+            const toSec = currentCdsiData[toKey]?.name || toKey;
+
+            const diversionPacket = {
+                type: 'DIVERSION_TRIGGER',
+                fromSector: fromKey,
+                toSector: toKey,
+                reason: 'Crowd density exceeded safe threshold (>3.5 ppl/m²)',
+                time: new Date().toLocaleTimeString()
+            };
+
+            socket.emit('DIVERSION_TRIGGER', diversionPacket);
+
+            // Also broadcast across offline mesh channel
+            if (typeof meshChannel !== 'undefined') {
+                meshChannel.postMessage({
+                    packetId: 'DIV-' + Date.now(),
+                    type: 'DIVERSION_TRIGGER',
+                    fromSector: fromSec,
+                    toSector: toSec,
+                    timestamp: Date.now()
+                });
+            }
+
+            // Local state update
+            if (currentCdsiData[fromKey]) {
+                currentCdsiData[fromKey].status = 'DIVERTING';
+                currentCdsiData[fromKey].density = Math.max(1.8, (currentCdsiData[fromKey].density - 0.8).toFixed(1));
+            }
+            renderCdsiSectors();
+            alert(`🔀 DIVERSION ENGAGED:\nInflow at ${fromSec} stopped.\nPilgrims actively rerouted to ${toSec}!`);
+        }
+
+        function setFestivalProtocol(mode) {
+            const btnNormal = document.getElementById('proto-btn-normal');
+            const btnShahi = document.getElementById('proto-btn-shahi');
+            const badge = document.getElementById('protocol-badge');
+
+            if (mode === 'shahi_snan') {
+                btnShahi.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-rose-700 shadow-sm transition flex items-center gap-1.5";
+                btnNormal.className = "px-3 py-1.5 rounded-lg text-xs font-bold text-white hover:bg-white/20 transition";
+                badge.innerText = "SHAHI SNAN EMERGENCY PROTOCOL ACTIVE";
+                badge.className = "px-2 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-black animate-pulse";
+                alert("🔱 SHAHI SNAN PROTOCOL ACTIVATED:\n• One-Way Pedestrian Ring Enforced\n• 40 NDRF Rescue Boats Dispatched\n• Pontoon Capacity Capped to 75%");
+            } else {
+                btnNormal.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-orange-700 shadow-sm transition";
+                btnShahi.className = "px-3 py-1.5 rounded-lg text-xs font-bold text-white hover:bg-white/20 transition flex items-center gap-1.5";
+                badge.innerText = "Standard Day Protocol Active";
+                badge.className = "px-2 py-0.5 rounded-full bg-emerald-400 text-slate-900 text-[10px] font-bold";
+            }
+        }
+
+        function applyCapPreset(preset) {
+            const sevEl = document.getElementById('cap-severity');
+            const urgEl = document.getElementById('cap-urgency');
+            const enEl = document.getElementById('cap-headline-en');
+            const hiEl = document.getElementById('cap-headline-hi');
+            const areaEl = document.getElementById('cap-area-desc');
+
+            if (preset === 'bridge_surge') {
+                sevEl.value = 'Severe';
+                urgEl.value = 'Immediate';
+                enEl.value = 'Pontoon Bridge #4 Surge - Ingress Halted';
+                hiEl.value = 'पांटून पुल संख्या 4 पर अत्यधिक दबाव - प्रवेश रोका गया';
+                areaEl.value = 'Pontoon 4, Daraganj to Jhunsi Corridor';
+            } else if (preset === 'sangam_water') {
+                sevEl.value = 'Extreme';
+                urgEl.value = 'Immediate';
+                enEl.value = 'Sangam Deep Water Currents - Stay Inside Safe Barricades';
+                hiEl.value = 'त्रिवेणी संगम में तेज जलप्रवाह - सुरक्षा रस्सियों के भीतर ही स्नान करें';
+                areaEl.value = 'Sangam Nose Bathing Ghats 1-5';
+            } else if (preset === 'diversion_active') {
+                sevEl.value = 'Moderate';
+                urgEl.value = 'Immediate';
+                enEl.value = 'Crowd Diversion Active towards Jhunsi Holding Area';
+                hiEl.value = 'झूंसी होल्डिंग एरिया की ओर मार्ग परिवर्तन प्रभावी';
+                areaEl.value = 'All Eastbound Approaches, Sector 3 to 8';
+            } else if (preset === 'fire_smoke') {
+                sevEl.value = 'Severe';
+                urgEl.value = 'Immediate';
+                enEl.value = 'Sector 14 Camp Hazard - Keep Emergency Lanes Clear';
+                hiEl.value = 'सेक्टर 14 शिविर में आग की चेतावनी - एम्बुलेंस मार्ग खाली रखें';
+                areaEl.value = 'Sector 14 Akharas Encampment';
+            }
+        }
+
+        function broadcastCapAlert() {
+            const headlineEn = document.getElementById('cap-headline-en').value.trim();
+            const headlineHi = document.getElementById('cap-headline-hi').value.trim();
+            if (!headlineEn && !headlineHi) {
+                alert('Please provide an alert headline in English or Hindi.');
+                return;
+            }
+
+            const alertId = 'CAP-IN-UP-KUMBH-' + Date.now().toString().slice(-6);
+            const severity = document.getElementById('cap-severity').value;
+            const urgency = document.getElementById('cap-urgency').value;
+            const areaDesc = document.getElementById('cap-area-desc').value;
+
+            const capAlert = {
+                identifier: alertId,
+                sender: "UP-SDMA-ICCC-PRAYAGRAJ",
+                sent: new Date().toLocaleTimeString(),
+                status: "Actual",
+                msgType: "Alert",
+                scope: "Public",
+                info: {
+                    category: "Safety",
+                    event: headlineEn || headlineHi,
+                    urgency: urgency,
+                    severity: severity,
+                    certainty: "Observed",
+                    headline: headlineEn || headlineHi,
+                    headline_hi: headlineHi || headlineEn,
+                    areaDesc: areaDesc,
+                    instruction: "Follow on-ground sevadar & police guidelines immediately."
+                }
+            };
+
+            // Emit to socket server
+            socket.emit('CAP_ALERT_BROADCAST', capAlert);
+
+            // Broadcast on offline mesh network
+            if (typeof meshChannel !== 'undefined') {
+                meshChannel.postMessage({
+                    packetId: 'MESH-' + alertId,
+                    type: 'CAP_ALERT_BROADCAST',
+                    capAlert: capAlert,
+                    originNode: 'ICCC-MASTER',
+                    hops: 0,
+                    timestamp: Date.now()
+                });
+            }
+
+            capAlertsStore.unshift(capAlert);
+            renderCapAlerts();
+            alert(`🚨 ITU-T CAP ALERT BROADCASTED:\nID: ${alertId}\nSeverity: ${severity}\nRelayed via Internet & Offline Mesh Radio!`);
+        }
+
+        function renderCapAlerts(alerts) {
+            if (alerts) capAlertsStore = alerts;
+            const container = document.getElementById('active-cap-list');
+            const countEl = document.getElementById('active-cap-count');
+            const badgeEl = document.getElementById('cap-active-badge');
+            if (countEl) countEl.innerText = `${capAlertsStore.length} Active`;
+            if (badgeEl) badgeEl.innerText = capAlertsStore.length;
+            if (!container) return;
+
+            if (capAlertsStore.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-10 text-slate-400 text-xs">
+                        <i class="fas fa-shield-check text-3xl mb-2 text-emerald-500"></i>
+                        <p>No active NDMA CAP alerts. Kumbh Mela sectors are nominal.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = capAlertsStore.map((alert, idx) => {
+                const info = alert.info || {};
+                let border = "border-amber-300 dark:border-amber-800";
+                let sevBadge = "bg-amber-100 text-amber-800";
+                if (info.severity === 'Extreme') {
+                    border = "border-rose-400 dark:border-rose-800";
+                    sevBadge = "bg-rose-100 text-rose-800 font-extrabold";
+                }
+
+                return `
+                    <div class="p-4 rounded-xl border ${border} bg-slate-50 dark:bg-slate-800/40 flex flex-col gap-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 font-bold">${alert.identifier}</span>
+                            <div class="flex items-center gap-2">
+                                <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${sevBadge}">${info.severity || 'ALERT'}</span>
+                                <span class="text-[10px] text-slate-400 font-mono">${alert.sent}</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h4 class="font-extrabold text-sm text-slate-900 dark:text-white">${info.headline}</h4>
+                            ${info.headline_hi ? `<p class="text-xs text-orange-600 dark:text-orange-400 font-semibold mt-0.5">${info.headline_hi}</p>` : ''}
+                        </div>
+
+                        <div class="text-[11px] text-slate-500 flex items-center gap-1.5">
+                            <i class="fas fa-location-dot text-rose-500"></i>
+                            <span>${info.areaDesc || 'Prayagraj Sangam'}</span>
+                        </div>
+
+                        <div class="pt-2 border-t border-slate-200 dark:border-slate-700/60 flex justify-between items-center text-[10px]">
+                            <span class="text-slate-400 font-mono">ITU-T X.1303 CAP v1.2</span>
+                            <button onclick="dismissCapAlert(${idx})" class="text-rose-600 dark:text-rose-400 hover:underline font-bold">Revoke / Cancel</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function dismissCapAlert(idx) {
+            capAlertsStore.splice(idx, 1);
+            renderCapAlerts();
+        }
+
+        function downloadCapJson() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
+                standard: "ITU-T X.1303 Common Alerting Protocol v1.2",
+                authority: "Suraksha Kumbh ICCC Prayagraj",
+                activeAlerts: capAlertsStore
+            }, null, 2));
+            const dlAnchor = document.createElement('a');
+            dlAnchor.setAttribute("href", dataStr);
+            dlAnchor.setAttribute("download", `KUMBH_CAP_ALERT_${Date.now()}.json`);
+            dlAnchor.click();
+        }
+
+        // Socket listeners for CAP and CDSI
+        socket.on('CAP_ALERTS_SYNC', (alerts) => {
+            renderCapAlerts(alerts);
+        });
+
+        socket.on('CAP_ALERT_BROADCAST', (alert) => {
+            capAlertsStore.unshift(alert);
+            renderCapAlerts();
+        });
+
+        socket.on('CDSI_UPDATE', (metrics) => {
+            renderCdsiSectors(metrics);
+        });
+
+        renderCdsiSectors();
+        renderCapAlerts();
 
         setInterval(() => {
             const clockEl = document.getElementById('clock');

@@ -107,9 +107,14 @@
                     <i class="fas fa-moon text-blue-400 hidden dark:inline text-xs"></i>
                 </button>
 
-                <div class="hidden sm:block text-right">
-                    <div class="text-[8px] text-slate-400 font-mono">ID</div>
-                    <div class="text-[10px] font-mono font-bold text-orange-600 dark:text-orange-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700" id="user-id-display">...</div>
+                <div class="hidden sm:flex items-center gap-2">
+                    <span id="offline-queue-badge" class="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-cyan-100 text-cyan-800 dark:bg-cyan-950 dark:text-cyan-400">
+                        ⚡ Mesh Sync: 0
+                    </span>
+                    <div class="text-right">
+                        <div class="text-[8px] text-slate-400 font-mono">ID</div>
+                        <div class="text-[10px] font-mono font-bold text-orange-600 dark:text-orange-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700" id="user-id-display">...</div>
+                    </div>
                 </div>
 
                 <select onchange="changeLanguage(this.value)"
@@ -132,16 +137,47 @@
     <!-- MAIN BODY -->
     <main class="flex-grow max-w-4xl w-full mx-auto p-4 flex flex-col gap-4">
 
-        <!-- PILGRIM ID (MOBILE VIEW) -->
+        <!-- PILGRIM ID & OFFLINE QUEUE (MOBILE VIEW) -->
         <div class="sm:hidden bg-white dark:bg-[#111827] p-3 rounded-2xl flex items-center justify-between border border-slate-200 dark:border-slate-800 shadow-sm">
             <div class="flex items-center gap-2">
                 <i class="fas fa-id-badge text-orange-500"></i>
                 <span class="text-xs font-bold text-slate-700 dark:text-slate-300">Pilgrim ID:</span>
                 <span class="text-xs font-mono font-bold text-orange-600 dark:text-orange-400" id="user-id-display-mobile">...</span>
             </div>
-            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-400">
-                Connected
-            </span>
+            <div class="flex items-center gap-2">
+                <span id="offline-queue-badge-mob" class="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-cyan-100 text-cyan-800 dark:bg-cyan-950 dark:text-cyan-400">
+                    ⚡ Sync: 0
+                </span>
+                <span id="conn-status-badge-mob" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-400">
+                    Connected
+                </span>
+            </div>
+        </div>
+
+        <!-- NDMA SACHET / ITU-T CAP LIVE ALERT BANNER -->
+        <div id="cap-user-alert-banner" class="bg-gradient-to-r from-rose-600 to-amber-600 text-white p-3.5 rounded-2xl shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border border-rose-500/40">
+            <div class="flex items-start gap-3">
+                <div class="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shrink-0 text-lg">
+                    🚨
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span id="cap-banner-sev" class="px-2 py-0.2 rounded-full bg-white text-rose-700 text-[10px] font-black tracking-wider uppercase">SEVERE ADVISORY</span>
+                        <span id="cap-banner-area" class="text-[10px] text-white/90 font-mono font-semibold">Sector 3-4 Pontoon</span>
+                    </div>
+                    <h3 id="cap-banner-headline" class="text-xs font-extrabold mt-0.5 leading-snug">Heavy Crowd Surge at Pontoon Bridge #4 (Ganga)</h3>
+                    <p id="cap-banner-headline-hi" class="text-[11px] text-amber-100 font-medium">पांटून पुल संख्या 4 पर अत्यधिक भीड़ - तुरंत मार्ग बदलें</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 w-full sm:w-auto shrink-0 justify-end">
+                <button onclick="speakCurrentCapAlert()" class="px-2.5 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-bold transition flex items-center gap-1.5 backdrop-blur-sm" title="Listen Audio Alert">
+                    <i class="fas fa-volume-high"></i>
+                    <span>सुनें / Listen</span>
+                </button>
+                <button onclick="dismissCapBanner()" class="text-white/70 hover:text-white px-2 py-1 text-sm">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
         </div>
 
         <!-- CLEAN SEVA-SYNC STYLE TAB PILLS (DIVIDED PROPERLY, NOT CRAMMED) -->
@@ -235,6 +271,45 @@
 
             </div>
 
+            <!-- TACTICAL AUDIO SIREN & SPEECH SOS TOOLS -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <!-- EMERGENCY AUDIBLE SIREN -->
+                <div class="bg-white dark:bg-[#111827] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center justify-between shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <div class="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600" id="siren-icon">
+                            <i class="fas fa-bullhorn text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-sm text-slate-900 dark:text-white">Loud Safety Siren</h3>
+                            <p class="text-xs text-slate-500" id="siren-status">Alert crowd & nearby police</p>
+                        </div>
+                    </div>
+                    <button onclick="toggleEmergencySiren()" id="siren-toggle-btn"
+                        class="px-3.5 py-2 rounded-xl text-xs font-black transition bg-amber-500 hover:bg-amber-600 text-white shadow-sm flex items-center gap-1.5 cursor-pointer">
+                        <i class="fas fa-volume-high"></i>
+                        <span id="siren-btn-text">SIREN ON</span>
+                    </button>
+                </div>
+
+                <!-- 1-TAP HINDI/ENGLISH VOICE SOS -->
+                <div class="bg-white dark:bg-[#111827] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center justify-between shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <div class="p-3 rounded-2xl bg-purple-50 dark:bg-purple-950/40 text-purple-600" id="voice-dictate-icon">
+                            <i class="fas fa-comment-dots text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-sm text-slate-900 dark:text-white">बोलकर मदद मांगें</h3>
+                            <p class="text-xs text-slate-500" id="voice-dictate-status">Tap mic & speak emergency</p>
+                        </div>
+                    </div>
+                    <button onclick="startVoiceSosDictation()" id="voice-dictate-btn"
+                        class="px-3.5 py-2 rounded-xl text-xs font-black transition bg-purple-600 hover:bg-purple-700 text-white shadow-sm flex items-center gap-1.5 cursor-pointer">
+                        <i class="fas fa-microphone"></i>
+                        <span>बोलें / Speak</span>
+                    </button>
+                </div>
+            </div>
+
             <!-- TACTICAL SMS FALLBACK -->
             <button onclick="sendSMSBackup()"
                 class="w-full bg-slate-800 hover:bg-slate-900 dark:bg-slate-800 dark:hover:bg-slate-700 text-white p-3.5 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition">
@@ -256,6 +331,30 @@
                     <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">
                         GPS Active
                     </span>
+                </div>
+
+                <!-- PONTOON & GHAT BOTTLENECK RADAR -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
+                    <div id="stat-sec-sangam" class="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800">
+                        <div class="text-[10px] text-slate-500">Sangam Nose</div>
+                        <div class="font-extrabold text-amber-600 dark:text-amber-400">85% Cap</div>
+                        <div class="text-[9px] text-slate-400">Stay in ropes</div>
+                    </div>
+                    <div id="stat-sec-pontoon3" class="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800">
+                        <div class="text-[10px] text-slate-500">Pontoon #3</div>
+                        <div class="font-extrabold text-rose-600 dark:text-rose-400 animate-pulse">4.1 ppl/m²</div>
+                        <div class="text-[9px] text-rose-500">High Surge</div>
+                    </div>
+                    <div id="stat-sec-pontoon4" class="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800">
+                        <div class="text-[10px] text-slate-500">Pontoon #4</div>
+                        <div class="font-extrabold text-purple-600 dark:text-purple-400">DIVERTED</div>
+                        <div class="text-[9px] text-purple-500">Use South Ramp</div>
+                    </div>
+                    <div id="stat-sec-arail" class="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800">
+                        <div class="text-[10px] text-slate-500">Arail Ghat</div>
+                        <div class="font-extrabold text-emerald-600 dark:text-emerald-400">CLEAR 🟢</div>
+                        <div class="text-[9px] text-emerald-600">Fast Ingress</div>
+                    </div>
                 </div>
 
                 <!-- WATERMARK-FREE LEAFLET MAP -->
@@ -812,31 +911,42 @@
             });
         }
 
-        // --- 8. SOS DISTRESS SIGNAL (HYBRID MESH + SOCKET) ---
-        function sendSOS() {
+        // --- 8. SOS DISTRESS SIGNAL (HYBRID MESH + SOCKET + OFFLINE QUEUE) ---
+        function sendSOS(customDetails) {
+            const desc = customDetails || 'Emergency SOS Signal Triggered';
             const sosPacket = {
                 packetId: 'SOS-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
                 originNode: USER_ID,
                 type: 'SOS',
-                payload: 'Emergency SOS Signal Triggered',
+                payload: desc,
                 location: `${startLoc[0]}, ${startLoc[1]}`,
                 hops: 0,
                 relayPath: [USER_ID],
                 timestamp: Date.now()
             };
 
-            // Always broadcast into local Mesh
-            meshChannel.postMessage(sosPacket);
-            logUserMeshTerminal(`>> TX [SOS]: Relayed distress packet ${sosPacket.packetId} into mesh`);
-
-            // Also emit via local/cloud socket
-            socket.emit('SOS', {
+            const sosPayload = {
                 userId: USER_ID,
                 type: 'SOS',
-                details: 'Emergency SOS Signal Triggered',
+                details: desc,
                 location: `${startLoc[0]}, ${startLoc[1]}`,
                 time: new Date().toLocaleTimeString()
-            });
+            };
+
+            // Always broadcast into local Mesh Radio (works with 0% internet)
+            if (typeof meshChannel !== 'undefined') {
+                meshChannel.postMessage(sosPacket);
+                logUserMeshTerminal(`>> TX [SOS]: Relayed distress packet ${sosPacket.packetId} into mesh`);
+            }
+
+            // If socket is connected, emit directly; otherwise, save to offline IndexedDB store
+            if (typeof socket !== 'undefined' && socket.connected && !isPureMeshMode) {
+                socket.emit('SOS', sosPayload);
+            } else {
+                if (typeof queueOfflineEvent === 'function') {
+                    queueOfflineEvent('SOS', sosPayload);
+                }
+            }
 
             showToast("🚨 SOS TRANSMITTED! Command Center and Ghat Police alerted.", 'error');
             const banner = document.getElementById('status-banner');
@@ -1203,6 +1313,358 @@
             showToast("Police & report owner notified with coordinates!", 'success');
             closeScannerModal();
         }
+
+        // ========================================================
+        // --- 15. INDEXEDDB OFFLINE-FIRST QUEUE & SYNC ENGINE ---
+        // ========================================================
+        let offlineDb = null;
+        let offlineQueueCount = 0;
+
+        function initOfflineDb() {
+            const request = indexedDB.open('SurakshaKumbhOfflineDB', 1);
+            request.onupgradeneeded = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains('offline_events')) {
+                    db.createObjectStore('offline_events', { keyPath: 'id', autoIncrement: true });
+                }
+            };
+            request.onsuccess = (e) => {
+                offlineDb = e.target.result;
+                refreshOfflineQueueBadge();
+            };
+            request.onerror = (e) => {
+                console.warn('IndexedDB not available, falling back to localStorage');
+            };
+        }
+        initOfflineDb();
+
+        function queueOfflineEvent(eventName, payload) {
+            const item = {
+                eventName: eventName,
+                payload: payload,
+                timestamp: Date.now()
+            };
+
+            // Always forward to local mesh radio first (works without server/internet)
+            if (typeof meshChannel !== 'undefined') {
+                meshChannel.postMessage({
+                    packetId: 'OFFLINE-' + Date.now(),
+                    type: eventName,
+                    originNode: USER_ID,
+                    hops: 0,
+                    relayPath: [USER_ID],
+                    payload: payload,
+                    timestamp: Date.now()
+                });
+            }
+
+            if (!offlineDb) {
+                let localQ = JSON.parse(localStorage.getItem('suraksha_offline_q') || '[]');
+                localQ.push(item);
+                localStorage.setItem('suraksha_offline_q', JSON.stringify(localQ));
+                offlineQueueCount = localQ.length;
+                updateQueueBadges();
+                return;
+            }
+
+            const tx = offlineDb.transaction('offline_events', 'readwrite');
+            const store = tx.objectStore('offline_events');
+            store.add(item);
+            tx.oncomplete = () => {
+                refreshOfflineQueueBadge();
+            };
+        }
+
+        function refreshOfflineQueueBadge() {
+            if (!offlineDb) return;
+            const tx = offlineDb.transaction('offline_events', 'readonly');
+            const store = tx.objectStore('offline_events');
+            const countReq = store.count();
+            countReq.onsuccess = () => {
+                offlineQueueCount = countReq.result;
+                updateQueueBadges();
+            };
+        }
+
+        function updateQueueBadges() {
+            const b1 = document.getElementById('offline-queue-badge');
+            const b2 = document.getElementById('offline-queue-badge-mob');
+            const text = `⚡ Mesh Sync: ${offlineQueueCount}`;
+            if (b1) b1.innerText = text;
+            if (b2) b2.innerText = text;
+        }
+
+        function flushOfflineQueue() {
+            if (!offlineDb) {
+                let localQ = JSON.parse(localStorage.getItem('suraksha_offline_q') || '[]');
+                if (localQ.length === 0) return;
+                localQ.forEach(item => {
+                    socket.emit(item.eventName, item.payload);
+                });
+                localStorage.removeItem('suraksha_offline_q');
+                showToast(`✅ Synced ${localQ.length} offline emergency signals!`, 'success');
+                offlineQueueCount = 0;
+                updateQueueBadges();
+                return;
+            }
+
+            const tx = offlineDb.transaction('offline_events', 'readwrite');
+            const store = tx.objectStore('offline_events');
+            const getAllReq = store.getAll();
+
+            getAllReq.onsuccess = () => {
+                const items = getAllReq.result;
+                if (!items || items.length === 0) return;
+
+                items.forEach(item => {
+                    socket.emit(item.eventName, item.payload);
+                });
+
+                store.clear();
+                tx.oncomplete = () => {
+                    offlineQueueCount = 0;
+                    updateQueueBadges();
+                    showToast(`✅ Synced ${items.length} offline signals to Command Center!`, 'success');
+                };
+            };
+        }
+
+        // Flush when socket reconnects
+        socket.on('connect', () => {
+            const badge = document.getElementById('conn-status-badge-mob');
+            if (badge) {
+                badge.innerText = "Connected";
+                badge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-400";
+            }
+            flushOfflineQueue();
+        });
+
+        socket.on('disconnect', () => {
+            const badge = document.getElementById('conn-status-badge-mob');
+            if (badge) {
+                badge.innerText = "Offline (Mesh Active)";
+                badge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-400";
+            }
+        });
+
+        // ========================================================
+        // --- 16. WEB AUDIO HIGH-DECIBEL SAFETY SIREN ---
+        // ========================================================
+        let sirenCtx = null;
+        let sirenOsc = null;
+        let sirenGain = null;
+        let sirenInterval = null;
+        let isSirenActive = false;
+
+        function toggleEmergencySiren() {
+            if (isSirenActive) {
+                stopEmergencySiren();
+            } else {
+                startEmergencySiren();
+            }
+        }
+
+        function startEmergencySiren() {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) {
+                    showToast("Audio API not supported in this browser.", 'error');
+                    return;
+                }
+
+                sirenCtx = new AudioContext();
+                sirenOsc = sirenCtx.createOscillator();
+                sirenGain = sirenCtx.createGain();
+
+                sirenOsc.type = 'sawtooth';
+                sirenOsc.frequency.setValueAtTime(800, sirenCtx.currentTime);
+
+                sirenGain.gain.setValueAtTime(0.5, sirenCtx.currentTime);
+                sirenOsc.connect(sirenGain);
+                sirenGain.connect(sirenCtx.destination);
+
+                sirenOsc.start();
+                isSirenActive = true;
+
+                let freqState = false;
+                sirenInterval = setInterval(() => {
+                    if (!sirenCtx || !sirenOsc) return;
+                    const targetFreq = freqState ? 800 : 1200;
+                    sirenOsc.frequency.linearRampToValueAtTime(targetFreq, sirenCtx.currentTime + 0.25);
+                    freqState = !freqState;
+                }, 300);
+
+                const btnText = document.getElementById('siren-btn-text');
+                const btn = document.getElementById('siren-toggle-btn');
+                const icon = document.getElementById('siren-icon');
+                if (btnText) btnText.innerText = "SIREN OFF";
+                if (btn) btn.className = "px-3.5 py-2 rounded-xl text-xs font-black transition bg-red-600 hover:bg-red-700 text-white shadow-lg animate-pulse flex items-center gap-1.5 cursor-pointer";
+                if (icon) icon.className = "p-3 rounded-2xl bg-red-100 dark:bg-red-950/60 text-red-600 animate-bounce";
+
+                showToast("🔊 High-Decibel Siren playing! Tap again to stop.", 'error');
+
+            } catch (err) {
+                console.error("Siren audio error:", err);
+                showToast("Could not start siren audio.", 'error');
+            }
+        }
+
+        function stopEmergencySiren() {
+            if (sirenInterval) clearInterval(sirenInterval);
+            if (sirenOsc) {
+                try { sirenOsc.stop(); sirenOsc.disconnect(); } catch (e) {}
+                sirenOsc = null;
+            }
+            if (sirenCtx) {
+                try { sirenCtx.close(); } catch (e) {}
+                sirenCtx = null;
+            }
+            isSirenActive = false;
+
+            const btnText = document.getElementById('siren-btn-text');
+            const btn = document.getElementById('siren-toggle-btn');
+            const icon = document.getElementById('siren-icon');
+            if (btnText) btnText.innerText = "SIREN ON";
+            if (btn) btn.className = "px-3.5 py-2 rounded-xl text-xs font-black transition bg-amber-500 hover:bg-amber-600 text-white shadow-sm flex items-center gap-1.5 cursor-pointer";
+            if (icon) icon.className = "p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600";
+        }
+
+        // ========================================================
+        // --- 17. 1-TAP HINDI/ENGLISH VOICE SOS DICTATION ---
+        // ========================================================
+        function startVoiceSosDictation() {
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                showToast("Speech recognition not supported in browser. Please type or press SOS.", 'error');
+                return;
+            }
+
+            const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const dictRec = new SpeechRec();
+            dictRec.continuous = false;
+            dictRec.interimResults = false;
+            dictRec.lang = 'hi-IN';
+
+            const status = document.getElementById('voice-dictate-status');
+            const btn = document.getElementById('voice-dictate-btn');
+            const icon = document.getElementById('voice-dictate-icon');
+
+            if (status) status.innerText = "Listening... बोलिए अपनी समस्या";
+            if (btn) btn.className = "px-3.5 py-2 rounded-xl text-xs font-black transition bg-red-600 text-white animate-pulse flex items-center gap-1.5";
+            if (icon) icon.className = "p-3 rounded-2xl bg-red-100 text-red-600 animate-bounce";
+
+            dictRec.onresult = (evt) => {
+                const spokenText = evt.results[0][0].transcript;
+                if (status) status.innerText = `सुना गया: "${spokenText}"`;
+                
+                // Transmit spoken SOS
+                sendSOS(spokenText);
+                showToast(`🚨 Spoken SOS Sent: "${spokenText}"`, 'error');
+            };
+
+            dictRec.onerror = () => {
+                if (status) status.innerText = "Error. Please tap SOS button.";
+                resetVoiceSosUi();
+            };
+
+            dictRec.onend = () => {
+                resetVoiceSosUi();
+            };
+
+            try {
+                dictRec.start();
+            } catch (e) {
+                resetVoiceSosUi();
+            }
+        }
+
+        function resetVoiceSosUi() {
+            const btn = document.getElementById('voice-dictate-btn');
+            const icon = document.getElementById('voice-dictate-icon');
+            if (btn) btn.className = "px-3.5 py-2 rounded-xl text-xs font-black transition bg-purple-600 hover:bg-purple-700 text-white shadow-sm flex items-center gap-1.5 cursor-pointer";
+            if (icon) icon.className = "p-3 rounded-2xl bg-purple-50 dark:bg-purple-950/40 text-purple-600";
+        }
+
+        // ========================================================
+        // --- 18. NDMA CAP LIVE ALERTS & AUDIO READOUT ---
+        // ========================================================
+        let currentCapAlert = {
+            headline: "Heavy Crowd Surge at Pontoon Bridge #4 (Ganga)",
+            headline_hi: "पांटून पुल संख्या 4 पर अत्यधिक भीड़ - तुरंत मार्ग बदलें",
+            area: "Sector 3-4 Pontoon",
+            severity: "Severe"
+        };
+
+        function speakCurrentCapAlert() {
+            if (!('speechSynthesis' in window)) {
+                showToast("Speech synthesis not available in this browser.", 'info');
+                return;
+            }
+
+            const textToSpeak = currentCapAlert.headline_hi || currentCapAlert.headline;
+            const utter = new SpeechSynthesisUtterance(textToSpeak);
+            utter.lang = 'hi-IN';
+            utter.rate = 0.95;
+            window.speechSynthesis.speak(utter);
+            showToast("🔊 Playing Hindi voice advisory...", 'info');
+        }
+
+        function dismissCapBanner() {
+            document.getElementById('cap-user-alert-banner')?.classList.add('hidden');
+        }
+
+        socket.on('CAP_ALERT_BROADCAST', (alert) => {
+            if (!alert) return;
+            const info = alert.info || {};
+            currentCapAlert = {
+                headline: info.headline || 'Emergency Alert',
+                headline_hi: info.headline_hi || info.headline || '',
+                area: info.areaDesc || 'Mela Area',
+                severity: info.severity || 'Severe'
+            };
+
+            const banner = document.getElementById('cap-user-alert-banner');
+            const sevEl = document.getElementById('cap-banner-sev');
+            const areaEl = document.getElementById('cap-banner-area');
+            const hlEl = document.getElementById('cap-banner-headline');
+            const hlHiEl = document.getElementById('cap-banner-headline-hi');
+
+            if (sevEl) sevEl.innerText = `${currentCapAlert.severity} ADVISORY`;
+            if (areaEl) areaEl.innerText = currentCapAlert.area;
+            if (hlEl) hlEl.innerText = currentCapAlert.headline;
+            if (hlHiEl) hlHiEl.innerText = currentCapAlert.headline_hi;
+            if (banner) banner.classList.remove('hidden');
+
+            showToast(`🚨 NDMA CAP: ${currentCapAlert.headline}`, 'error');
+            speakCurrentCapAlert();
+        });
+
+        socket.on('DIVERSION_TRIGGER', (data) => {
+            showToast(`🔀 Route Diversion Activated from ${data.fromSector} to ${data.toSector}!`, 'info');
+            const p4 = document.getElementById('stat-sec-pontoon4');
+            if (p4) {
+                p4.className = "p-2 rounded-xl bg-purple-100 dark:bg-purple-950 border border-purple-400";
+            }
+        });
+
+        socket.on('CDSI_UPDATE', (metrics) => {
+            if (!metrics) return;
+            if (metrics['pontoon-3']) {
+                const el = document.getElementById('stat-sec-pontoon3');
+                if (el) el.innerHTML = `
+                    <div class="text-[10px] text-slate-500">Pontoon #3</div>
+                    <div class="font-extrabold text-rose-600 dark:text-rose-400">${metrics['pontoon-3'].density} ppl/m²</div>
+                    <div class="text-[9px] text-rose-500">${metrics['pontoon-3'].status}</div>
+                `;
+            }
+            if (metrics['sangam-nose']) {
+                const el = document.getElementById('stat-sec-sangam');
+                if (el) el.innerHTML = `
+                    <div class="text-[10px] text-slate-500">Sangam Nose</div>
+                    <div class="font-extrabold text-amber-600 dark:text-amber-400">${metrics['sangam-nose'].capacity}% Cap</div>
+                    <div class="text-[9px] text-slate-400">${metrics['sangam-nose'].density} ppl/m²</div>
+                `;
+            }
+        });
     </script>
 </body>
 
