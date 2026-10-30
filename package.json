@@ -1,7 +1,7 @@
 {
-  "name": "saral-system",
-  "version": "1.0.0",
-  "description": "SARAL Disaster Management System with Real-time Communication",
+  "name": "suraksha-kumbh",
+  "version": "2.0.0",
+  "description": "Suraksha Kumbh Maha Mela Disaster Management & Crowd Safety System",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

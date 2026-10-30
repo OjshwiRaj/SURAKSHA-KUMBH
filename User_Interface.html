@@ -1,1671 +1,1209 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="light">
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SARAL (Smart Alert & Resilient Aid Layer) - Citizen App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Suraksha Kumbh (सुरक्षा कुंभ) - Pilgrim Companion</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        kumbh: {
+                            orange: '#ea580c',
+                            amber: '#f59e0b',
+                            navy: '#0f172a'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Face API -->
     <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
     <style>
-        .animate-blink {
-            animation: blink 1s infinite;
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            transition: background-color 0.2s ease, color 0.2s ease;
         }
-
-        @keyframes blink {
-
-            0%,
-            100% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: 0.5;
-            }
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
         }
-
         #map {
             height: 100%;
             width: 100%;
+            min-height: 280px;
             z-index: 1;
         }
-
-        /* Custom Toggle Switch */
-        .toggle-checkbox:checked {
-            right: 0;
-            border-color: #68D391;
+        @keyframes pulseRing {
+            0% { transform: scale(0.96); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
+            70% { transform: scale(1); box-shadow: 0 0 0 16px rgba(239, 68, 68, 0); }
+            100% { transform: scale(0.96); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
         }
-
-        .toggle-checkbox:checked+.toggle-label {
-            background-color: #68D391;
+        .sos-pulse {
+            animation: pulseRing 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
         }
     </style>
-    <!-- DEBUG OVERLAY -->
-    <div id="debug-console"
-        style="display:none; position:fixed; top:0; left:0; width:100%; background:rgba(0,0,0,0.8); color:lime; font-family:monospace; z-index:9999; padding:10px; pointer-events:none; font-size:12px;">
-    </div>
-    <script>
-        window.onerror = function (msg, url, lineNo, columnNo, error) {
-            const consoleDiv = document.getElementById('debug-console');
-            consoleDiv.style.display = 'block';
-            consoleDiv.innerHTML += `<div>❌ ${msg} (Line ${lineNo})</div>`;
-            return false;
-        };
-        window.addEventListener('unhandledrejection', event => {
-            const consoleDiv = document.getElementById('debug-console');
-            consoleDiv.style.display = 'block';
-            consoleDiv.innerHTML += `<div>⚠️ Promise Rejection: ${event.reason}</div>`;
-        });
-        console.log("Debug Mode Enabled");
-    </script>
 </head>
 
-<body class="bg-gray-100 text-gray-800 font-sans pb-20">
+<body class="bg-slate-50 text-slate-800 dark:bg-[#0b0f17] dark:text-slate-100 min-h-screen flex flex-col pb-24 select-none transition-colors">
 
-    <!-- DISASTER OVERLAY -->
+    <!-- DISASTER OVERLAY (MODAL POPUP) -->
     <div id="user-disaster-alert"
-        class="hidden fixed inset-0 z-[2000] flex flex-col items-center justify-center text-white p-6 text-center bg-red-600/95 backdrop-blur-sm">
-        <i class="fas fa-radiation text-7xl mb-4 animate-spin-slow text-yellow-300"></i>
-        <h1 class="text-4xl font-black uppercase mb-2 tracking-wider">EMERGENCY</h1>
-        <h2 id="user-alert-type" class="text-2xl font-bold mb-4 bg-black/30 px-4 py-2 rounded">ALERT RECEIVED</h2>
-        <p id="user-alert-msg" class="text-lg mb-8">Seek shelter immediately. Follow official instructions.</p>
+        class="hidden fixed inset-0 z-[2000] flex flex-col items-center justify-center text-white p-6 text-center bg-red-700/95 backdrop-blur-md">
+        <div class="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center mb-4 border border-white/20 animate-bounce">
+            <i class="fas fa-bullhorn text-4xl text-amber-300"></i>
+        </div>
+        <h1 class="text-3xl font-black uppercase mb-1 tracking-wider">MELA EMERGENCY ADVISORY</h1>
+        <h2 id="user-alert-type" class="text-xl font-bold mb-4 bg-black/30 px-4 py-1.5 rounded-lg border border-white/20">ALERT BROADCAST</h2>
+        <p id="user-alert-msg" class="text-sm text-red-100 max-w-md mb-8">Follow police loudspeaker directions and move calmly towards marked Safe Zones.</p>
         <button onclick="dismissUserAlert()"
-            class="bg-white text-red-700 px-8 py-3 rounded-full font-bold text-lg shadow-xl hover:scale-105 transition">
-            I AM SAFE
+            class="bg-white text-red-700 px-8 py-3.5 rounded-xl font-extrabold text-base shadow-2xl hover:scale-105 active:scale-95 transition">
+            I AM SAFE (स्थिति समझी)
         </button>
     </div>
 
-    <!-- NAVBAR -->
-    <nav class="bg-gradient-to-r from-blue-900 via-blue-800 to-blue-900 text-white p-3 shadow-lg sticky top-0 z-50">
-        <div class="flex justify-between items-center max-w-7xl mx-auto">
-            <!-- LOGO & TITLE -->
-            <div class="flex items-center gap-3">
-                <div class="bg-white/10 p-2 rounded-lg backdrop-blur-sm border border-white/20">
-                    <i class="fas fa-shield-virus text-2xl text-yellow-400"></i>
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toast-container" class="fixed top-16 left-1/2 -translate-x-1/2 z-[3500] w-11/12 max-w-sm pointer-events-none flex flex-col gap-2"></div>
+
+    <!-- APP NAVBAR (SEVA-SYNC INSPIRED LIGHT / DARK DESIGN) -->
+    <nav class="bg-white dark:bg-[#111827] border-b border-slate-200 dark:border-slate-800 px-4 py-3 sticky top-0 z-50 shadow-sm transition-colors">
+        <div class="max-w-4xl mx-auto flex items-center justify-between gap-3">
+            
+            <!-- BRANDING & LOGO -->
+            <div class="flex items-center gap-2.5">
+                <div class="p-1 rounded-xl bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-800/60 shadow-sm">
+                    <img src="logo.png" alt="Suraksha Kumbh Logo" class="w-8 h-8 object-contain">
                 </div>
                 <div>
-                    <!-- Mobile Title -->
-                    <h1 class="text-xl font-bold tracking-wide md:hidden flex items-center gap-2">
-                        SARAL
-                        <span class="text-[10px] bg-blue-700 px-1.5 py-0.5 rounded text-blue-200 font-normal">AI</span>
-                    </h1>
-                    <!-- Desktop Title -->
-                    <h1 class="text-xl font-bold tracking-wide hidden md:block" data-i18n="app_name">SARAL (System for
-                        Advanced Resilient Aid Layer)</h1>
-                    <p class="text-[10px] text-blue-200 uppercase hidden md:block" data-i18n="app_tagline">Smart Alert &
-                        Resilient Aid Layer</p>
+                    <div class="flex items-center gap-1.5">
+                        <h1 class="text-base font-black tracking-tight text-slate-900 dark:text-white uppercase">
+                            SURAKSHA KUMBH
+                        </h1>
+                        <span class="text-[9px] font-bold px-1.5 py-0.2 rounded bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400">
+                            सुरक्षा कुंभ
+                        </span>
+                    </div>
+                    <p class="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Maha Kumbh Pilgrim Safety Companion</p>
                 </div>
             </div>
 
-            <!-- RIGHT CONTROLS -->
-            <div class="flex items-center gap-2 md:gap-4">
-                <div class="hidden md:block">
-                    <p class="text-[10px] text-blue-300 font-mono text-right">SESSION ID</p>
-                    <p class="text-xs font-mono bg-blue-950/50 px-2 py-1 rounded border border-blue-700/50"
-                        id="user-id-display">...</p>
-                </div>
-                <!-- Mobile ID (Icon only or simplified) -->
-                <div class="md:hidden">
-                    <p class="text-xs font-mono bg-blue-950/50 px-2 py-1 rounded border border-blue-700/50 max-w-[80px] truncate"
-                        id="user-id-display-mobile">...</p>
+            <!-- CONTROLS: THEME, PILGRIM ID, LANGUAGE -->
+            <div class="flex items-center gap-2">
+                <button onclick="toggleTheme()"
+                    class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-amber-400 transition"
+                    title="Toggle Light / Dark Mode">
+                    <i class="fas fa-sun text-amber-500 dark:hidden text-xs"></i>
+                    <i class="fas fa-moon text-blue-400 hidden dark:inline text-xs"></i>
+                </button>
+
+                <div class="hidden sm:block text-right">
+                    <div class="text-[8px] text-slate-400 font-mono">ID</div>
+                    <div class="text-[10px] font-mono font-bold text-orange-600 dark:text-orange-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700" id="user-id-display">...</div>
                 </div>
 
-                <div class="relative group">
-                    <select onchange="changeLanguage(this.value)"
-                        class="bg-blue-800/80 text-white text-xs py-1.5 pl-2 pr-6 rounded border border-blue-600 focus:outline-none appearance-none hover:bg-blue-700 transition cursor-pointer">
-                        <option value="en">🇬🇧 EN</option>
-                        <option value="hi">🇮🇳 HI</option>
-                        <option value="mr">🇮🇳 MR</option>
-                        <option value="bn">🇮🇳 BN</option>
-                    </select>
-                    <div
-                        class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-blue-300 text-xs">
-                        <i class="fas fa-chevron-down"></i>
-                    </div>
-                </div>
+                <select onchange="changeLanguage(this.value)"
+                    class="bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-bold px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none">
+                    <option value="en">🇬🇧 EN</option>
+                    <option value="hi" selected>🇮🇳 हिन्दी</option>
+                    <option value="mr">🇮🇳 मराठी</option>
+                    <option value="bn">🇮🇳 বাংলা</option>
+                </select>
             </div>
         </div>
     </nav>
 
-    <!-- STATUS BANNER -->
-    <div class="bg-green-600 text-white p-3 text-center font-bold text-sm shadow-md" id="status-banner">
-        <i class="fas fa-check-circle"></i> STATUS: SAFE
+    <!-- LIVE STATUS BAR -->
+    <div class="bg-emerald-600 text-white px-4 py-1.5 text-center font-bold text-xs shadow-sm flex items-center justify-center gap-2" id="status-banner">
+        <i class="fas fa-shield-check"></i>
+        <span id="status-banner-text">STATUS: AREA SAFE & ALL GHATS OPERATIONAL</span>
     </div>
 
-    <div class="p-4 max-w-md lg:max-w-7xl mx-auto lg:grid lg:grid-cols-12 lg:gap-6 space-y-4 lg:space-y-0">
+    <!-- MAIN BODY -->
+    <main class="flex-grow max-w-4xl w-full mx-auto p-4 flex flex-col gap-4">
 
-        <!-- LEFT COLUMN: STATUS & CONTROLS -->
-        <div class="lg:col-span-3 space-y-4">
-            <!-- OFFLINE MESH TOGGLE -->
-            <div class="bg-white p-3 rounded-xl shadow-sm border border-gray-200 flex justify-between items-center">
-                <div class="flex items-center gap-3">
-                    <div class="bg-gray-100 p-2 rounded-full text-gray-600" id="mesh-icon">
-                        <i class="fas fa-wifi"></i>
-                    </div>
-                    <div>
-                        <h3 class="font-bold text-sm text-gray-700" data-i18n="conn_mode">Connection Mode</h3>
-                        <p class="text-xs text-gray-500" id="mesh-status" data-i18n="conn_online">Online (Internet)</p>
-                    </div>
-                </div>
-                <label class="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" value="" class="sr-only peer" onchange="toggleMeshMode(this)">
-                    <div
-                        class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600">
-                    </div>
-                </label>
+        <!-- PILGRIM ID (MOBILE VIEW) -->
+        <div class="sm:hidden bg-white dark:bg-[#111827] p-3 rounded-2xl flex items-center justify-between border border-slate-200 dark:border-slate-800 shadow-sm">
+            <div class="flex items-center gap-2">
+                <i class="fas fa-id-badge text-orange-500"></i>
+                <span class="text-xs font-bold text-slate-700 dark:text-slate-300">Pilgrim ID:</span>
+                <span class="text-xs font-mono font-bold text-orange-600 dark:text-orange-400" id="user-id-display-mobile">...</span>
             </div>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-400">
+                Connected
+            </span>
+        </div>
 
-            <!-- VOICE GUARD TOGGLE -->
-            <div class="bg-white p-3 rounded-xl shadow-sm border border-gray-200 flex justify-between items-center">
-                <div class="flex items-center gap-3">
-                    <div class="bg-gray-100 p-2 rounded-full text-gray-600" id="voice-icon">
-                        <i class="fas fa-microphone-slash"></i>
-                    </div>
-                    <div>
-                        <h3 class="font-bold text-sm text-gray-700">Voice Guard</h3>
-                        <p class="text-xs text-gray-500" id="voice-status">Inactive</p>
-                    </div>
-                </div>
-                <label class="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" value="" class="sr-only peer" onchange="toggleVoiceGuard(this)">
-                    <div
-                        class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600">
-                    </div>
-                </label>
-            </div>
-
-            <!-- HEALTH TRIAGE -->
-            <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-blue-500">
-                <h3 class="font-bold text-blue-800 mb-2"><i class="fas fa-user-md"></i> <span
-                        data-i18n="triage_title">Health Triage</span></h3>
-                <div class="flex gap-2">
-                    <button onclick="reportHealth('Minor')"
-                        class="flex-1 bg-green-100 text-green-800 py-2 rounded text-xs font-bold hover:bg-green-200">🟢
-                        <span data-i18n="btn_minor">Minor</span></button>
-                    <button onclick="reportHealth('Moderate')"
-                        class="flex-1 bg-yellow-100 text-yellow-800 py-2 rounded text-xs font-bold hover:bg-yellow-200">🟡
-                        <span data-i18n="btn_moderate">Moderate</span></button>
-                    <button onclick="reportHealth('Critical')"
-                        class="flex-1 bg-red-100 text-red-800 py-2 rounded text-xs font-bold hover:bg-red-200">🔴
-                        <span data-i18n="btn_critical">Critical</span></button>
-                </div>
-            </div>
-
-            <!-- PREPAREDNESS -->
-            <button onclick="document.getElementById('checklist-modal').classList.remove('hidden')"
-                class="w-full bg-gray-100 text-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 flex items-center gap-3 hover:bg-gray-200">
-                <i class="fas fa-clipboard-check text-2xl text-gray-600"></i>
-                <div class="text-left">
-                    <span class="font-bold text-sm block" data-i18n="checklist_title">Preparedness Checklist</span>
-                    <span class="text-xs text-gray-500" data-i18n="checklist_desc">Are you ready?</span>
-                </div>
+        <!-- CLEAN SEVA-SYNC STYLE TAB PILLS (DIVIDED PROPERLY, NOT CRAMMED) -->
+        <div class="grid grid-cols-4 gap-2 bg-slate-200 dark:bg-slate-800/80 p-1 rounded-2xl shadow-inner">
+            <button onclick="switchTab('tab-emergency')" id="btn-tab-emergency"
+                class="tab-pill py-2 rounded-xl text-xs font-bold transition flex flex-col sm:flex-row items-center justify-center gap-1 bg-white dark:bg-[#111827] text-orange-600 dark:text-orange-400 shadow-sm">
+                <i class="fas fa-tower-broadcast text-sm"></i>
+                <span>Emergency</span>
+            </button>
+            <button onclick="switchTab('tab-navigation')" id="btn-tab-navigation"
+                class="tab-pill py-2 rounded-xl text-xs font-bold transition flex flex-col sm:flex-row items-center justify-center gap-1 text-slate-600 dark:text-slate-400 hover:text-slate-900">
+                <i class="fas fa-route text-sm"></i>
+                <span>Safe Route</span>
+            </button>
+            <button onclick="switchTab('tab-aid')" id="btn-tab-aid"
+                class="tab-pill py-2 rounded-xl text-xs font-bold transition flex flex-col sm:flex-row items-center justify-center gap-1 text-slate-600 dark:text-slate-400 hover:text-slate-900">
+                <i class="fas fa-boxes-packing text-sm"></i>
+                <span>Request Aid</span>
+            </button>
+            <button onclick="switchTab('tab-mesh')" id="btn-tab-mesh"
+                class="tab-pill py-2 rounded-xl text-xs font-bold transition flex flex-col sm:flex-row items-center justify-center gap-1 text-slate-600 dark:text-slate-400 hover:text-slate-900">
+                <i class="fas fa-network-wired text-sm text-cyan-500"></i>
+                <span>Mesh Radio</span>
             </button>
         </div>
 
-        <!-- CENTER COLUMN: MAP & SOS -->
-        <div class="lg:col-span-6 space-y-4">
-            <!-- SAFE ROUTE MAP -->
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 h-[400px] flex flex-col">
-                <h3 class="font-bold text-gray-700 mb-2 flex justify-between shrink-0">
-                    <span><i class="fas fa-map-marked-alt"></i> <span data-i18n="safe_route_title">Safe
-                            Route</span></span>
-                    <span class="text-xs bg-gray-100 px-2 py-1 rounded text-gray-500" data-i18n="gps_active">GPS
-                        Active</span>
-                </h3>
-                <div id="map" class="rounded bg-gray-100 mb-2 flex-grow h-full"></div>
+        <!-- ============================================== -->
+        <!-- TAB 1: EMERGENCY SOS & VOICE GUARD -->
+        <!-- ============================================== -->
+        <div id="tab-emergency" class="tab-pane flex flex-col gap-4">
+            
+            <!-- BIG CLEAN SOS CARD -->
+            <div class="bg-white dark:bg-[#111827] p-6 rounded-3xl border border-slate-200 dark:border-slate-800 text-center flex flex-col items-center justify-center gap-4 shadow-sm">
+                <div>
+                    <span class="text-xs font-bold uppercase tracking-wider text-red-600 px-3 py-1 rounded-full bg-red-100 dark:bg-red-950/40 border border-red-200 dark:border-red-800/60">
+                        Priority Distress Signal
+                    </span>
+                    <h2 class="text-xl font-black text-slate-900 dark:text-white mt-2">Maha Kumbh SOS Emergency</h2>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto mt-1">
+                        Transmits your live GPS position directly to Sector Police, Ghat QRT teams, and central command.
+                    </p>
+                </div>
+
+                <button onclick="sendSOS()" id="main-sos-btn"
+                    class="sos-pulse w-48 h-48 rounded-full bg-gradient-to-br from-red-500 to-red-700 text-white font-black flex flex-col items-center justify-center gap-2 shadow-xl active:scale-95 transition cursor-pointer border-4 border-white dark:border-slate-800">
+                    <i class="fas fa-bell text-5xl"></i>
+                    <span class="text-2xl font-black tracking-wider">SOS</span>
+                    <span class="text-[10px] uppercase font-bold text-red-100 tracking-wider">Tap to Alert</span>
+                </button>
+
+                <p class="text-[11px] text-slate-400 font-medium">Auto-switches to Offline Mesh Radio if internet is down</p>
+            </div>
+
+            <!-- VOICE GUARD & HEALTH CHECK-IN -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                
+                <!-- VOICE GUARD -->
+                <div class="bg-white dark:bg-[#111827] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center justify-between shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <div class="p-3 rounded-2xl bg-red-50 dark:bg-red-950/40 text-red-600" id="voice-icon">
+                            <i class="fas fa-microphone-slash text-xl"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-1.5">
+                                <h3 class="font-bold text-sm text-slate-900 dark:text-white">Voice Guard SOS</h3>
+                                <span class="text-[9px] px-1.5 py-0.2 rounded bg-red-100 text-red-700 font-bold">AI</span>
+                            </div>
+                            <p class="text-xs text-slate-500" id="voice-status">Say "Help" or "Bachao"</p>
+                        </div>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="voice-guard-checkbox" class="sr-only peer" onchange="toggleVoiceGuard(this)">
+                        <div class="w-12 h-6 bg-slate-300 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
+                    </label>
+                </div>
+
+                <!-- MEDICAL TRIAGE CARD -->
+                <div class="bg-white dark:bg-[#111827] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col justify-between shadow-sm gap-2">
+                    <div class="flex items-center justify-between">
+                        <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                            <i class="fas fa-user-doctor text-blue-600"></i> Health Triage
+                        </h3>
+                        <span class="text-[10px] text-slate-400">1-Tap Medical Aid</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button onclick="reportHealth('Minor')" class="bg-emerald-100 text-emerald-800 py-1.5 rounded-lg text-xs font-bold hover:bg-emerald-200 transition">🟢 Minor</button>
+                        <button onclick="reportHealth('Moderate')" class="bg-amber-100 text-amber-800 py-1.5 rounded-lg text-xs font-bold hover:bg-amber-200 transition">🟡 Moderate</button>
+                        <button onclick="reportHealth('Critical')" class="bg-red-100 text-red-800 py-1.5 rounded-lg text-xs font-bold hover:bg-red-200 transition">🔴 Critical</button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- TACTICAL SMS FALLBACK -->
+            <button onclick="sendSMSBackup()"
+                class="w-full bg-slate-800 hover:bg-slate-900 dark:bg-slate-800 dark:hover:bg-slate-700 text-white p-3.5 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition">
+                <i class="fas fa-comment-sms text-emerald-400"></i>
+                <span>Tactical SMS Fallback: Send Geo-Compressed SMS to Police (112)</span>
+            </button>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- TAB 2: WATERMARK-FREE SAFE ROUTE NAVIGATION -->
+        <!-- ============================================== -->
+        <div id="tab-navigation" class="tab-pane hidden flex flex-col gap-4">
+            <div class="bg-white dark:bg-[#111827] p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col gap-3 shadow-sm">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-person-shelter text-orange-600 text-base"></i>
+                        <h3 class="font-bold text-sm text-slate-900 dark:text-white">Kumbh Mela Stampede-Safe Corridor</h3>
+                    </div>
+                    <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">
+                        GPS Active
+                    </span>
+                </div>
+
+                <!-- WATERMARK-FREE LEAFLET MAP -->
+                <div class="relative w-full h-[320px] rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800">
+                    <div id="map"></div>
+                </div>
+
                 <button onclick="findSafeZone()"
-                    class="w-full bg-blue-600 text-white py-3 rounded font-bold text-sm shadow hover:bg-blue-700 shrink-0"
-                    data-i18n="nav_btn">
-                    NAVIGATE TO SAFE ZONE
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-sm py-3.5 rounded-xl shadow-sm active:scale-95 transition flex items-center justify-center gap-2">
+                    <i class="fas fa-diamond-turn-right"></i>
+                    <span>CALCULATE ROUTE TO ASSIGNED SAFE GHAT</span>
+                </button>
+
+                <p class="text-[11px] text-slate-500 text-center">
+                    Intelligently routes even & odd Pilgrim IDs to alternate exit corridors (Sangam North vs Arail South) to prevent bottlenecks.
+                </p>
+            </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- TAB 3: REQUEST EMERGENCY AID & SUPPLIES -->
+        <!-- ============================================== -->
+        <div id="tab-aid" class="tab-pane hidden flex flex-col gap-4">
+            <div class="bg-white dark:bg-[#111827] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-4">
+                    <div>
+                        <h3 class="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wide">Request Emergency Field Supplies</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Items are dispatched directly from the central command depot to your location.</p>
+                    </div>
+                    <div class="p-2 rounded-xl bg-orange-100 dark:bg-orange-500/20 text-orange-600 text-base">
+                        <i class="fas fa-hand-holding-heart"></i>
+                    </div>
+                </div>
+
+                <!-- 1-TAP AID BUTTONS -->
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <button onclick="quickRequestAid('Drinking Water & ORS (पेयजल)', 2)"
+                        class="p-3.5 rounded-2xl bg-blue-50 dark:bg-slate-800/60 hover:bg-blue-100 dark:hover:bg-slate-800 border border-blue-200 dark:border-slate-700 flex flex-col items-center text-center gap-1.5 transition active:scale-95">
+                        <i class="fas fa-bottle-water text-2xl text-blue-500"></i>
+                        <span class="text-xs font-bold text-slate-800 dark:text-white">Drinking Water</span>
+                        <span class="text-[10px] text-slate-500">पेयजल / ओआरएस</span>
+                    </button>
+
+                    <button onclick="quickRequestAid('Mahaprasad & Food (अन्न व भोजन)', 2)"
+                        class="p-3.5 rounded-2xl bg-amber-50 dark:bg-slate-800/60 hover:bg-amber-100 dark:hover:bg-slate-800 border border-amber-200 dark:border-slate-700 flex flex-col items-center text-center gap-1.5 transition active:scale-95">
+                        <i class="fas fa-bowl-rice text-2xl text-amber-500"></i>
+                        <span class="text-xs font-bold text-slate-800 dark:text-white">Food / Prasad</span>
+                        <span class="text-[10px] text-slate-500">अन्न / महाप्रसाद</span>
+                    </button>
+
+                    <button onclick="quickRequestAid('Emergency First Aid Kit (दवा किट)', 1)"
+                        class="p-3.5 rounded-2xl bg-emerald-50 dark:bg-slate-800/60 hover:bg-emerald-100 dark:hover:bg-slate-800 border border-emerald-200 dark:border-slate-700 flex flex-col items-center text-center gap-1.5 transition active:scale-95">
+                        <i class="fas fa-kit-medical text-2xl text-emerald-500"></i>
+                        <span class="text-xs font-bold text-slate-800 dark:text-white">Medical Kit</span>
+                        <span class="text-[10px] text-slate-500">दवा / प्राथमिक उपचार</span>
+                    </button>
+
+                    <button onclick="quickRequestAid('Warm Blanket (ऊनी कंबल)', 1)"
+                        class="p-3.5 rounded-2xl bg-purple-50 dark:bg-slate-800/60 hover:bg-purple-100 dark:hover:bg-slate-800 border border-purple-200 dark:border-slate-700 flex flex-col items-center text-center gap-1.5 transition active:scale-95">
+                        <i class="fas fa-rug text-2xl text-purple-500"></i>
+                        <span class="text-xs font-bold text-slate-800 dark:text-white">Warm Blanket</span>
+                        <span class="text-[10px] text-slate-500">शीत निवारक कंबल</span>
+                    </button>
+
+                    <button onclick="quickRequestAid('Life Jacket / Ghat Boat (लाइफ जैकेट)', 1)"
+                        class="p-3.5 rounded-2xl bg-cyan-50 dark:bg-slate-800/60 hover:bg-cyan-100 dark:hover:bg-slate-800 border border-cyan-200 dark:border-slate-700 flex flex-col items-center text-center gap-1.5 transition active:scale-95">
+                        <i class="fas fa-life-ring text-2xl text-cyan-500"></i>
+                        <span class="text-xs font-bold text-slate-800 dark:text-white">Life Jacket</span>
+                        <span class="text-[10px] text-slate-500">घाट लाइफ जैकेट</span>
+                    </button>
+
+                    <button onclick="reportHealth('Critical')"
+                        class="p-3.5 rounded-2xl bg-red-50 dark:bg-slate-800/60 hover:bg-red-100 dark:hover:bg-slate-800 border border-red-200 dark:border-slate-700 flex flex-col items-center text-center gap-1.5 transition active:scale-95">
+                        <i class="fas fa-truck-medical text-2xl text-red-500"></i>
+                        <span class="text-xs font-bold text-slate-800 dark:text-white">Call Ambulance</span>
+                        <span class="text-[10px] text-slate-500">आपातकालीन एम्बुलेंस</span>
+                    </button>
+                </div>
+
+                <div class="mt-5 border-t border-slate-100 dark:border-slate-800 pt-3">
+                    <h4 class="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase mb-2">Your Active Request Status:</h4>
+                    <div id="pilgrim-requests-log" class="space-y-2 text-xs">
+                        <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 text-slate-500 text-center" id="no-my-reqs">
+                            No active requests. Tap an item above to dispatch supplies to your GPS point.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- TAB 4: OFFLINE MESH NETWORK (WORKABLE P2P CONSOLE) -->
+        <!-- ============================================== -->
+        <div id="tab-mesh" class="tab-pane hidden flex flex-col gap-4">
+            
+            <div class="bg-white dark:bg-[#111827] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col gap-4">
+                <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                    <div class="flex items-center gap-2.5">
+                        <div class="p-2.5 rounded-2xl bg-cyan-50 dark:bg-cyan-950/40 text-cyan-600">
+                            <i class="fas fa-network-wired text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wide">Offline P2P Mesh Network</h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Direct peer-to-peer radio relay without telecom or internet connectivity.</p>
+                        </div>
+                    </div>
+                    <span class="px-2.5 py-1 rounded-full text-xs font-bold font-mono bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-400">
+                        P2P Active
+                    </span>
+                </div>
+
+                <!-- MESH MODE TOGGLE -->
+                <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 flex items-center justify-between">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-900 dark:text-white">Activate Pure Offline Mesh Radio</h4>
+                        <p class="text-[11px] text-slate-500">Forces device into zero-WAN local relay mode (BroadcastChannel + Local Hop)</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="mesh-mode-toggle" class="sr-only peer" onchange="toggleMeshRadio(this)">
+                        <div class="w-12 h-6 bg-slate-300 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-600"></div>
+                    </label>
+                </div>
+
+                <!-- MESH FIELD TEST ACTION -->
+                <button onclick="sendMeshPingPacket()"
+                    class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs py-3 rounded-xl shadow-sm flex items-center justify-center gap-2 transition active:scale-95">
+                    <i class="fas fa-tower-broadcast"></i>
+                    <span>BROADCAST TEST MESH PACKET TO NEARBY PHONES</span>
+                </button>
+
+                <!-- REAL-TIME TACTICAL TERMINAL -->
+                <div class="bg-slate-900 text-emerald-400 p-4 rounded-xl border border-slate-800 font-mono text-[11px] space-y-1.5 h-48 overflow-y-auto custom-scroll" id="mesh-user-log">
+                    <div class="text-slate-500">&gt;&gt; Suraksha Mesh Protocol v2.0 Initialized</div>
+                    <div class="text-slate-500">&gt;&gt; Listening on P2P Channel 'suraksha_kumbh_mesh'</div>
+                    <div class="text-cyan-400">&gt;&gt; Ready to hop packets across nearby devices without internet</div>
+                </div>
+            </div>
+
+            <!-- ADDITIONAL SEVADAR & RECOGNITION BUTTONS -->
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="document.getElementById('lost-modal').classList.remove('hidden')"
+                    class="bg-white dark:bg-[#111827] p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white flex items-center gap-2.5 shadow-sm text-xs font-bold hover:bg-slate-50 transition">
+                    <i class="fas fa-user-friends text-purple-600"></i>
+                    <span>Report Missing Person</span>
+                </button>
+
+                <button onclick="openScannerModal()"
+                    class="bg-white dark:bg-[#111827] p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white flex items-center gap-2.5 shadow-sm text-xs font-bold hover:bg-slate-50 transition">
+                    <i class="fas fa-camera text-pink-600"></i>
+                    <span>AI Face Scanner</span>
                 </button>
             </div>
 
-            <!-- SOS BUTTON -->
-            <button onclick="sendSOS()"
-                class="w-full bg-red-600 text-white p-4 rounded-xl shadow-lg active:scale-95 transition flex items-center justify-center gap-4 hover:bg-red-700">
-                <i class="fas fa-broadcast-tower text-3xl animate-pulse"></i>
-                <div class="text-left">
-                    <h2 class="text-xl font-black" data-i18n="sos_full_title">SOS EMERGENCY</h2>
-                    <p class="text-xs text-red-100" data-i18n="sos_full_desc">Broadcast Distress Signal</p>
-                </div>
-            </button>
         </div>
 
-        <!-- RIGHT COLUMN: ACTIONS -->
-        <div class="lg:col-span-3 grid grid-cols-2 lg:grid-cols-1 gap-3 h-fit">
-            <!-- REPORT DAMAGE -->
-            <button onclick="document.getElementById('damage-modal').classList.remove('hidden')"
-                class="bg-orange-100 text-orange-800 p-4 rounded-xl shadow-sm border border-orange-200 flex flex-col lg:flex-row items-center gap-3 hover:bg-orange-200">
-                <i class="fas fa-house-damage text-2xl"></i>
-                <span class="font-bold text-xs lg:text-sm" data-i18n="btn_damage">Report Damage</span>
-            </button>
+    </main>
 
-            <!-- MISSING PERSONS -->
-            <button onclick="document.getElementById('lost-modal').classList.remove('hidden')"
-                class="bg-purple-100 text-purple-800 p-4 rounded-xl shadow-sm border border-purple-200 flex flex-col lg:flex-row items-center gap-3 hover:bg-purple-200">
-                <i class="fas fa-user-friends text-2xl"></i>
-                <span class="font-bold text-xs lg:text-sm" data-i18n="btn_missing">Find People</span>
-            </button>
+    <!-- ============================================== -->
+    <!-- MODALS SECTION -->
+    <!-- ============================================== -->
 
-            <!-- SCAN FACES (NEW) -->
-            <button onclick="openScannerModal()"
-                class="bg-pink-100 text-pink-800 p-4 rounded-xl shadow-sm border border-pink-200 flex flex-col lg:flex-row items-center gap-3 hover:bg-pink-200">
-                <i class="fas fa-camera-retro text-2xl"></i>
-                <span class="font-bold text-xs lg:text-sm">Scan Faces</span>
-            </button>
-
-            <!-- VOLUNTEER -->
-            <button onclick="document.getElementById('volunteer-modal').classList.remove('hidden')"
-                class="bg-teal-100 text-teal-800 p-4 rounded-xl shadow-sm border border-teal-200 flex flex-col lg:flex-row items-center gap-3 hover:bg-teal-200">
-                <i class="fas fa-hands-helping text-2xl"></i>
-                <span class="font-bold text-xs lg:text-sm" data-i18n="btn_volunteer">Volunteer</span>
-            </button>
-        </div>
-
-    </div>
-
-    <!-- DAMAGE REPORT MODAL -->
-    <div id="damage-modal"
-        class="hidden fixed inset-0 z-[1500] bg-black/50 flex items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white w-full max-w-sm rounded-xl p-6 shadow-2xl animate-fade-in">
-            <h2 class="text-xl font-bold mb-4 text-orange-700"><i class="fas fa-exclamation-triangle"></i> Report Damage
+    <!-- MEDICAL MODAL -->
+    <div id="medical-modal" class="hidden fixed inset-0 z-[1500] bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl animate-fade-in border border-slate-200 dark:border-slate-800">
+            <h2 class="text-lg font-black mb-1 text-slate-900 dark:text-white flex items-center gap-2">
+                <i class="fas fa-heart-pulse text-red-600"></i> Medical Triage Report
             </h2>
-            <form onsubmit="submitDamageReport(event)" class="space-y-3">
-                <select id="damage-type" class="w-full p-2 border rounded bg-gray-50 text-sm font-bold">
-                    <option value="Road Blocked">🚧 Road Blocked</option>
-                    <option value="Building Collapse">🏚 Building Collapse</option>
-                    <option value="Power Failure">⚡ Power Failure</option>
-                    <option value="Flooding">🌊 Flooding</option>
-                </select>
-                <textarea id="damage-desc" placeholder="Describe the situation..."
-                    class="w-full p-2 border rounded bg-gray-50 text-sm h-20"></textarea>
-                <div class="flex gap-2">
-                    <button type="button" onclick="document.getElementById('damage-modal').classList.add('hidden')"
-                        class="flex-1 bg-gray-200 text-gray-700 py-2 rounded font-bold text-sm">Cancel</button>
+            <p class="text-xs text-slate-500 mb-4">Severity: <span id="med-severity-display" class="font-black text-red-600">Critical</span></p>
+
+            <form onsubmit="submitMedicalReport(event)" class="space-y-3.5">
+                <input type="hidden" id="med-severity" value="Critical">
+                <div>
+                    <label class="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Condition</label>
+                    <select id="med-type" class="w-full p-2.5 border rounded-xl bg-slate-50 dark:bg-slate-800 text-xs font-semibold focus:outline-none">
+                        <option value="Severe Breathlessness / Chest Pain">Severe Breathlessness / Chest Pain</option>
+                        <option value="Fracture / Sprain / Trampling">Fracture / Sprain / Trampling</option>
+                        <option value="Heatstroke / Dehydration / Fainting">Heatstroke / Dehydration / Fainting</option>
+                        <option value="Drowning / Water Ingestion">Drowning / Water Ingestion</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center gap-2 p-2 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200">
+                    <input type="checkbox" id="med-conscious" class="w-4 h-4 accent-red-600 rounded">
+                    <label for="med-conscious" class="text-xs font-bold text-red-800 dark:text-red-300">Pilgrim is UNCONSCIOUS (बेहोश)</label>
+                </div>
+
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="document.getElementById('medical-modal').classList.add('hidden')"
+                        class="flex-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 py-2.5 rounded-xl font-bold text-xs">Cancel</button>
                     <button type="submit"
-                        class="flex-1 bg-orange-600 text-white py-2 rounded font-bold text-sm shadow">Submit
-                        Report</button>
+                        class="flex-1 bg-red-600 hover:bg-red-500 text-white py-2.5 rounded-xl font-bold text-xs shadow">
+                        Dispatch Help
+                    </button>
                 </div>
             </form>
         </div>
     </div>
 
     <!-- LOST & FOUND MODAL -->
-    <div id="lost-modal"
-        class="hidden fixed inset-0 z-[1500] bg-black/50 flex items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white w-full max-w-sm rounded-xl p-6 shadow-2xl animate-fade-in">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-bold text-purple-700"><i class="fas fa-search"></i> Lost & Found</h2>
-                <div class="flex bg-gray-100 rounded p-1">
-                    <button onclick="toggleLostTab('person')" id="tab-person"
-                        class="px-3 py-1 rounded bg-purple-600 text-white text-xs font-bold transition">Person</button>
-                    <button onclick="toggleLostTab('item')" id="tab-item"
-                        class="px-3 py-1 rounded text-gray-500 text-xs font-bold transition hover:bg-gray-200">Item</button>
+    <div id="lost-modal" class="hidden fixed inset-0 z-[1500] bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800">
+            <h2 class="text-lg font-black text-purple-900 dark:text-purple-300 mb-3">Report Missing Pilgrim</h2>
+            <form onsubmit="submitLostReport(event)" class="space-y-3">
+                <input type="text" id="p-name" required placeholder="Full Name of Missing Person"
+                    class="w-full p-2.5 border rounded-xl bg-slate-50 dark:bg-slate-800 text-xs font-medium">
+                <input type="number" id="p-age" required placeholder="Age (उम्र)"
+                    class="w-full p-2.5 border rounded-xl bg-slate-50 dark:bg-slate-800 text-xs font-medium">
+                <input type="tel" id="p-contact" required placeholder="Contact Phone"
+                    class="w-full p-2.5 border rounded-xl bg-slate-50 dark:bg-slate-800 text-xs font-medium">
+                <div>
+                    <label class="text-[11px] font-bold text-slate-600 dark:text-slate-400 block mb-1">Face Photo for AI Scanner:</label>
+                    <input type="file" id="p-image" accept="image/*" required class="text-xs text-slate-500 w-full">
                 </div>
-            </div>
-
-            <!-- Missing Person Form -->
-            <form id="form-person" onsubmit="submitLostReport(event, 'person')" class="space-y-3">
-                <input type="text" id="p-name" placeholder="Name of Person"
-                    class="w-full p-2 border rounded bg-gray-50 text-sm" required>
-                <div class="grid grid-cols-2 gap-2">
-                    <input type="number" id="p-age" placeholder="Age" class="p-2 border rounded bg-gray-50 text-sm"
-                        required>
-                    <select id="p-gender" class="p-2 border rounded bg-gray-50 text-sm">
-                        <option>Male</option>
-                        <option>Female</option>
-                        <option>Child</option>
-                    </select>
-                </div>
-                <input type="text" id="p-clothes" placeholder="Clothing Description"
-                    class="w-full p-2 border rounded bg-gray-50 text-sm" required>
-
-                <div class="mb-2">
-                    <label class="block text-xs font-bold mb-1">Upload Photo</label>
-                    <input type="file" id="p-image" accept="image/*"
-                        class="w-full border p-2 rounded text-xs bg-gray-50">
-                </div>
-
-                <input type="tel" id="p-contact" placeholder="Your Contact Number"
-                    class="w-full p-2 border rounded bg-gray-50 text-sm" required>
-                <div class="flex gap-2">
+                <div class="flex gap-2 pt-2">
                     <button type="button" onclick="document.getElementById('lost-modal').classList.add('hidden')"
-                        class="flex-1 bg-gray-200 text-gray-700 py-2 rounded font-bold text-sm">Cancel</button>
+                        class="flex-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 py-2.5 rounded-xl font-bold text-xs">Cancel</button>
                     <button type="submit"
-                        class="flex-1 bg-purple-600 text-white py-2 rounded font-bold text-sm shadow">Report
-                        Missing</button>
-                </div>
-            </form>
-
-            <!-- Lost Item Form -->
-            <form id="form-item" onsubmit="submitLostReport(event, 'item')" class="hidden space-y-3">
-                <select id="i-type" class="w-full p-2 border rounded bg-gray-50 text-sm">
-                    <option>Wallet / ID</option>
-                    <option>Mobile Phone</option>
-                    <option>Bag / Luggage</option>
-                    <option>Jewelry</option>
-                </select>
-                <input type="text" id="i-desc" placeholder="Item Description"
-                    class="w-full p-2 border rounded bg-gray-50 text-sm" required>
-                <input type="text" id="i-loc" placeholder="Last Seen Location"
-                    class="w-full p-2 border rounded bg-gray-50 text-sm" required>
-                <input type="tel" id="i-contact" placeholder="Your Contact Number"
-                    class="w-full p-2 border rounded bg-gray-50 text-sm" required>
-                <div class="flex gap-2">
-                    <button type="button" onclick="document.getElementById('lost-modal').classList.add('hidden')"
-                        class="flex-1 bg-gray-200 text-gray-700 py-2 rounded font-bold text-sm">Cancel</button>
-                    <button type="submit"
-                        class="flex-1 bg-gray-700 text-white py-2 rounded font-bold text-sm shadow">Report Item</button>
+                        class="flex-1 bg-purple-600 hover:bg-purple-500 text-white py-2.5 rounded-xl font-bold text-xs shadow">Submit</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- MEDICAL REPORT MODAL -->
-    <div id="medical-modal"
-        class="hidden fixed inset-0 z-[1500] bg-black/50 flex items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white w-full max-w-sm rounded-xl p-6 shadow-2xl animate-fade-in">
-            <h2 class="text-xl font-bold mb-4 text-blue-700"><i class="fas fa-heartbeat"></i> Medical Report</h2>
-            <form onsubmit="submitMedicalReport(event)" class="space-y-3">
-                <input type="hidden" id="med-severity">
-
-                <div class="bg-gray-100 p-2 rounded text-center mb-2">
-                    <span class="text-xs text-gray-500 uppercase font-bold">Severity Level</span>
-                    <div id="med-severity-display" class="font-black text-lg uppercase">CRITICAL</div>
-                </div>
-
-                <label class="block text-sm font-bold text-gray-700">Injury Type</label>
-                <select id="med-type" class="w-full p-2 border rounded bg-gray-50 text-sm">
-                    <option value="Bleeding">🩸 Severe Bleeding</option>
-                    <option value="Fracture">🦴 Bone Fracture</option>
-                    <option value="Burns">🔥 Burns</option>
-                    <option value="Breathing">🫁 Breathing Difficulty</option>
-                    <option value="Unconscious">💤 Unconscious</option>
-                    <option value="Chest Pain">💔 Chest Pain</option>
-                    <option value="Other">❓ Other</option>
-                </select>
-
-                <label class="flex items-center gap-3 p-3 bg-red-50 border border-red-100 rounded cursor-pointer">
-                    <input type="checkbox" id="med-conscious" class="w-5 h-5 accent-red-600">
-                    <span class="text-sm font-bold text-red-800">Patient is Unconscious?</span>
-                </label>
-
-                <div class="flex gap-2 mt-4">
-                    <button type="button" onclick="document.getElementById('medical-modal').classList.add('hidden')"
-                        class="flex-1 bg-gray-200 text-gray-700 py-2 rounded font-bold text-sm">Cancel</button>
-                    <button type="submit"
-                        class="flex-1 bg-blue-600 text-white py-2 rounded font-bold text-sm shadow">Send Alert</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- VOLUNTEER MODAL -->
-    <div id="volunteer-modal"
-        class="hidden fixed inset-0 z-[1500] bg-black/50 flex items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white w-full max-w-sm rounded-xl p-6 shadow-2xl animate-fade-in">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-bold text-teal-700"><i class="fas fa-hands-helping"></i> Community</h2>
-                <div class="flex bg-gray-100 rounded p-1">
-                    <button onclick="toggleVolTab('request')" id="tab-request"
-                        class="px-3 py-1 rounded bg-teal-600 text-white text-xs font-bold transition">Request
-                        Help</button>
-                    <button onclick="toggleVolTab('join')" id="tab-join"
-                        class="px-3 py-1 rounded text-gray-500 text-xs font-bold transition hover:bg-gray-200">Join</button>
-                </div>
-            </div>
-
-            <!-- Request Help Form -->
-            <form id="form-request" onsubmit="submitVolunteer(event, 'request')" class="space-y-3">
-                <div class="p-3 bg-teal-50 rounded border border-teal-100 text-xs text-teal-800 mb-2">
-                    Request non-emergency assistance from nearby volunteers.
-                </div>
-                <select id="req-type" class="w-full p-2 border rounded bg-gray-50 text-sm">
-                    <option value="Food/Water">🍞 Need Food / Water</option>
-                    <option value="Shelter">⛺ Need Shelter</option>
-                    <option value="Transport">🚗 Need Transport</option>
-                    <option value="Medical Supplies">💊 Need Medical Supplies</option>
-                    <option value="Other">❓ Other</option>
-                </select>
-                <input type="number" id="req-qty" placeholder="Quantity Needed (e.g. 5)" min="1"
-                    class="w-full p-2 border rounded bg-gray-50 text-sm" required>
-                <textarea id="req-desc" placeholder="Details (e.g., 3 people, baby formula needed)"
-                    class="w-full p-2 border rounded bg-gray-50 text-sm h-20" required></textarea>
-                <div class="flex gap-2">
-                    <button type="button" onclick="document.getElementById('volunteer-modal').classList.add('hidden')"
-                        class="flex-1 bg-gray-200 text-gray-700 py-2 rounded font-bold text-sm">Cancel</button>
-                    <button type="submit"
-                        class="flex-1 bg-teal-600 text-white py-2 rounded font-bold text-sm shadow">Post
-                        Request</button>
-                </div>
-            </form>
-
-            <!-- Join Volunteer Form -->
-            <form id="form-join" onsubmit="submitVolunteer(event, 'join')" class="hidden space-y-3">
-                <div class="p-3 bg-blue-50 rounded border border-blue-100 text-xs text-blue-800 mb-2">
-                    Register as a volunteer to help others in your area.
-                </div>
-                <input type="text" id="vol-name" placeholder="Your Name"
-                    class="w-full p-2 border rounded bg-gray-50 text-sm" required>
-                <input type="file" id="vol-photo" accept="image/*" class="w-full p-2 border rounded bg-gray-50 text-sm">
-                <select id="vol-skill" class="w-full p-2 border rounded bg-gray-50 text-sm">
-                    <option value="General">General Assistance</option>
-                    <option value="First Aid">First Aid / Medical</option>
-                    <option value="Search & Rescue">Search & Rescue</option>
-                    <option value="Driver">Driver (Have Vehicle)</option>
-                    <option value="Cook">Cooking / Food Dist.</option>
-                </select>
-                <input type="tel" id="vol-contact" placeholder="Contact Number"
-                    class="w-full p-2 border rounded bg-gray-50 text-sm" required>
-                <div class="flex gap-2">
-                    <button type="button" onclick="document.getElementById('volunteer-modal').classList.add('hidden')"
-                        class="flex-1 bg-gray-200 text-gray-700 py-2 rounded font-bold text-sm">Cancel</button>
-                    <button type="submit"
-                        class="flex-1 bg-blue-600 text-white py-2 rounded font-bold text-sm shadow">Register</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- CHECKLIST MODAL -->
-    <div id="checklist-modal"
-        class="hidden fixed inset-0 z-[1500] bg-black/50 flex items-end sm:items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white w-full max-w-sm rounded-xl p-6 shadow-2xl animate-fade-in">
-            <h2 class="text-xl font-bold mb-4">🎒 Preparedness Checklist</h2>
-            <div class="space-y-3 mb-6">
-                <label class="flex items-center gap-3 p-3 bg-gray-50 rounded cursor-pointer">
-                    <input type="checkbox" class="w-5 h-5 accent-blue-600">
-                    <span class="text-sm">Pack Go-Bag (Water, Meds)</span>
-                </label>
-                <label class="flex items-center gap-3 p-3 bg-gray-50 rounded cursor-pointer">
-                    <input type="checkbox" class="w-5 h-5 accent-blue-600">
-                    <span class="text-sm">Save Emergency Numbers</span>
-                </label>
-                <label class="flex items-center gap-3 p-3 bg-gray-50 rounded cursor-pointer">
-                    <input type="checkbox" class="w-5 h-5 accent-blue-600">
-                    <span class="text-sm">Identify Meeting Point</span>
-                </label>
-                <label class="flex items-center gap-3 p-3 bg-gray-50 rounded cursor-pointer">
-                    <input type="checkbox" class="w-5 h-5 accent-blue-600">
-                    <span class="text-sm">Download Offline Maps</span>
-                </label>
-            </div>
-            <button onclick="document.getElementById('checklist-modal').classList.add('hidden')"
-                class="w-full bg-gray-800 text-white py-3 rounded-lg font-bold">Close</button>
-        </div>
-    </div>
-
-    <!-- SCANNER MODAL -->
-    <div id="scanner-modal"
-        class="hidden fixed inset-0 z-[1600] bg-black/80 flex items-center justify-center p-4 backdrop-blur-md">
-        <div
-            class="bg-gray-900 w-full max-w-lg rounded-xl p-4 shadow-2xl border border-pink-500 relative flex flex-col items-center">
-
-            <button onclick="closeScannerModal()" class="absolute top-2 right-2 text-gray-400 hover:text-white">
-                <i class="fas fa-times text-xl"></i>
+    <!-- AI FACE SCANNER MODAL -->
+    <div id="scanner-modal" class="hidden fixed inset-0 z-[2500] bg-black/90 flex flex-col items-center justify-center p-4 backdrop-blur-md">
+        <div class="relative w-full max-w-md bg-slate-900 rounded-3xl overflow-hidden border border-slate-700 shadow-2xl p-4 flex flex-col items-center">
+            <button onclick="closeScannerModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl z-20">
+                <i class="fas fa-times"></i>
             </button>
 
-            <h2 class="text-xl font-bold text-pink-500 mb-2"><i class="fas fa-expand"></i> Face Scanner</h2>
-            <p class="text-xs text-gray-400 mb-4 text-center">Point camera at people to check against missing reports.
-            </p>
+            <h3 class="text-sm font-bold text-white uppercase mb-1 flex items-center gap-2">
+                <i class="fas fa-camera text-pink-400"></i> AI Missing Person Face Matcher
+            </h3>
+            <p class="text-[10px] text-slate-400 mb-3" id="scan-status">Initializing Camera...</p>
 
-            <div class="relative w-full aspect-video bg-black rounded overflow-hidden border border-gray-700">
-                <video id="scanner-video" class="w-full h-full object-cover" autoplay muted></video>
-                <canvas id="scanner-canvas" class="absolute top-0 left-0 w-full h-full pointer-events-none"></canvas>
-
-                <div id="scan-status"
-                    class="absolute bottom-2 left-2 px-2 py-1 bg-black/60 text-white text-[10px] rounded font-mono">
-                    Initializing...
-                </div>
+            <div class="relative w-full aspect-video bg-black rounded-2xl overflow-hidden border border-slate-800 flex items-center justify-center">
+                <video id="scanner-video" autoplay playsinline muted class="w-full h-full object-cover"></video>
+                <canvas id="scanner-canvas" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
             </div>
 
-            <div class="mt-4 flex gap-3 w-full">
-                <button onclick="toggleScanner(true)" id="btn-start-scan"
-                    class="flex-1 bg-pink-600 hover:bg-pink-500 text-white py-2 rounded font-bold text-sm">
-                    <i class="fas fa-play"></i> Start
-                </button>
-                <button onclick="toggleScanner(false)" id="btn-stop-scan"
-                    class="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-300 py-2 rounded font-bold text-sm hidden">
-                    <i class="fas fa-stop"></i> Stop
-                </button>
-                <button onclick="flipCamera()" id="btn-flip-cam"
-                    class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded font-bold text-sm"
-                    title="Flip Camera">
-                    <i class="fas fa-sync-alt"></i>
+            <div id="scan-result" class="hidden mt-3 w-full p-3 rounded-2xl bg-emerald-950/80 border border-emerald-500/50 flex items-center justify-between text-xs animate-fade-in">
+                <div class="flex items-center gap-2.5">
+                    <img id="match-img" src="" class="w-10 h-10 rounded-xl object-cover border border-emerald-400">
+                    <div>
+                        <div class="font-bold text-emerald-300">MATCH IDENTIFIED!</div>
+                        <div class="text-[10px] text-slate-200" id="match-name">...</div>
+                    </div>
+                </div>
+                <button onclick="notifyMatch()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg shadow">
+                    Notify Police
                 </button>
             </div>
 
-            <!-- RESULT AREA -->
-            <div id="scan-result"
-                class="hidden mt-3 w-full bg-green-900/30 border border-green-500 p-3 rounded flex items-center gap-3 animate-pulse">
-                <img id="match-img" src="" class="w-12 h-12 rounded object-cover border border-green-400">
-                <div>
-                    <div class="text-green-400 font-bold text-sm">MATCH FOUND!</div>
-                    <div id="match-name" class="text-white text-xs">Name: Unknown</div>
-                </div>
-                <button onclick="notifyMatch()"
-                    class="ml-auto bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded text-xs font-bold">
-                    NOTIFY
+            <div class="flex items-center gap-3 mt-4">
+                <button onclick="toggleScanner(true)" id="btn-start-scan" class="bg-pink-600 hover:bg-pink-500 text-white text-xs font-bold px-4 py-2 rounded-xl">Start Scan</button>
+                <button onclick="toggleScanner(false)" id="btn-stop-scan" class="hidden bg-slate-700 text-white text-xs font-bold px-4 py-2 rounded-xl">Stop</button>
+                <button onclick="flipCamera()" class="bg-slate-800 text-slate-200 text-xs font-bold p-2.5 rounded-xl border border-slate-700">
+                    <i class="fas fa-camera-rotate"></i>
                 </button>
             </div>
         </div>
     </div>
 
-    <script>
-        const translations = {
-            en: {
-                app_name: "SARAL (Smart Alert & Resilient Aid Layer)",
-                app_tagline: "Smart Alert & Resilient Aid Layer",
-                status_safe: "STATUS: SAFE",
-                conn_mode: "Connection Mode",
-                conn_online: "Online (Internet)",
-                conn_mesh: "Mesh Radio (Offline)",
-                sos_title: "SOS",
-                sos_desc: "Broadcast Emergency Signal",
-                triage_title: "Health Triage",
-                btn_minor: "Minor",
-                btn_moderate: "Moderate",
-                btn_critical: "Critical",
-                checklist_title: "Preparedness Checklist",
-                checklist_desc: "Are you ready?",
-                safe_route_title: "Safe Route",
-                gps_active: "GPS Active",
-                nav_btn: "NAVIGATE TO SAFE ZONE",
-                sos_full_title: "SOS EMERGENCY",
-                sos_full_desc: "Broadcast Distress Signal",
-                btn_damage: "Report Damage",
-                btn_missing: "Find People",
-                btn_volunteer: "Volunteer"
-            },
-            hi: {
-                app_name: "सरल",
-                app_tagline: "आपदा सहायता मंच",
-                status_safe: "स्थिति: सुरक्षित",
-                conn_mode: "कनेक्शन मोड",
-                conn_online: "ऑनलाइन (इंटरनेट)",
-                conn_mesh: "मेश रेडियो (ऑफलाइन)",
-                sos_title: "बचाओ (SOS)",
-                sos_desc: "आपातकालीन संकेत भेजें",
-                triage_title: "स्वास्थ्य स्थिति",
-                btn_minor: "मामूली",
-                btn_moderate: "मध्यम",
-                btn_critical: "गंभीर",
-                checklist_title: "तैयारी सूची",
-                checklist_desc: "क्या आप तैयार हैं?",
-                safe_route_title: "सुरक्षित रास्ता",
-                gps_active: "जीपीएस सक्रिय",
-                nav_btn: "सुरक्षित क्षेत्र की ओर जाएं",
-                sos_full_title: "आपातकालीन SOS",
-                sos_full_desc: "संकट संकेत प्रसारित करें",
-                btn_damage: "नुकसान की रिपोर्ट करें",
-                btn_missing: "लापता लोग खोजें",
-                btn_volunteer: "स्वयंसेवक बनें"
-            },
-            mr: {
-                app_name: "सरल",
-                app_tagline: "आपत्ती मदत मंच",
-                status_safe: "स्थिती: सुरक्षित",
-                conn_mode: "कनेक्शन मोड",
-                conn_online: "ऑनलाइन (इंटरनेट)",
-                conn_mesh: "मेश रेडिओ (ऑफलाइन)",
-                sos_title: "वाचवा (SOS)",
-                sos_desc: "आणीबाणी सिग्नल पाठवा",
-                triage_title: "आरोग्य स्थिती",
-                btn_minor: "किरकोळ",
-                btn_moderate: "मध्यम",
-                btn_critical: "गंभीर",
-                checklist_title: "तयारी यादी",
-                checklist_desc: "तुम्ही तयार आहात का?",
-                safe_route_title: "सुरक्षित मार्ग",
-                gps_active: "जीपीएस सक्रिय",
-                nav_btn: "सुरक्षित क्षेत्राकडे जा",
-                sos_full_title: "आणीबाणी SOS",
-                sos_full_desc: "संकट सिग्नल प्रसारित करा",
-                btn_damage: "नुकसान कळवा",
-                btn_missing: "हरवलेली माणसे शोधा",
-                btn_volunteer: "स्वयंसेवक बना"
-            },
-            bn: {
-                app_name: "সরল",
-                app_tagline: "দুর্যোগ সহায়তা প্ল্যাটফর্ম",
-                status_safe: "অবস্থা: নিরাপদ",
-                conn_mode: "সংযোগ মোড",
-                conn_online: "অনলাইন (ইন্টারনেট)",
-                conn_mesh: "মেশ রেডিও (অফলাইন)",
-                sos_title: "বাঁচান (SOS)",
-                sos_desc: "জরুরী সংকেত পাঠান",
-                triage_title: "স্বাস্থ্য অবস্থা",
-                btn_minor: "সামান্য",
-                btn_moderate: "মাঝারি",
-                btn_critical: "গুরুতর",
-                checklist_title: "প্রস্তুতি তালিকা",
-                checklist_desc: "আপনি কি প্রস্তুত?",
-                safe_route_title: "নিরাপদ রুট",
-                gps_active: "জিপিএস সক্রিয়",
-                nav_btn: "নিরাপদ জোনে যান",
-                sos_full_title: "জরুরী SOS",
-                sos_full_desc: "বিপদ সংকেত প্রচার করুন",
-                btn_damage: "ক্ষয়ক্ষতির রিপোর্ট করুন",
-                btn_missing: "নিখোঁজ মানুষ খুঁজুন",
-                btn_volunteer: "স্বেচ্ছাসেবক হন"
-            }
-        };
+    <!-- VOICE SOS COUNTDOWN OVERLAY -->
+    <div id="voice-overlay"
+        class="hidden fixed inset-0 z-[3100] bg-red-700/95 flex flex-col items-center justify-center p-6 text-center backdrop-blur-md">
+        <div class="w-24 h-24 rounded-full bg-white/10 border-2 border-white/20 flex items-center justify-center mb-6 animate-pulse">
+            <i class="fas fa-microphone text-5xl text-white"></i>
+        </div>
+        <h2 class="text-2xl font-black text-white mb-1 uppercase tracking-wide">Distress Voice Detected</h2>
+        <p class="text-sm text-red-100 mb-6">Dispatching emergency SOS in <span id="voice-timer" class="font-mono font-black text-4xl text-amber-300">5</span> seconds...</p>
+        <button onclick="cancelVoiceSOS()"
+            class="bg-white text-red-700 px-8 py-4 rounded-2xl font-black text-base shadow-2xl hover:scale-105 active:scale-95 transition flex items-center gap-2">
+            <i class="fas fa-times-circle"></i> CANCEL SOS
+        </button>
+    </div>
 
-        function changeLanguage(lang) {
-            const t = translations[lang];
-            if (!t) return;
-
-            document.querySelectorAll('[data-i18n]').forEach(el => {
-                const key = el.getAttribute('data-i18n');
-                if (t[key]) {
-                    if (el.tagName === 'INPUT' && el.type === 'placeholder') {
-                        el.placeholder = t[key];
-                    } else {
-                        el.innerText = t[key];
-                    }
-                }
-            });
-        }
-    </script>
+    <!-- JAVASCRIPT LOGIC -->
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        const socket = io();
-        // Emit 'identify' event to tell server we are a USER, mostly for debugging
-        socket.emit('identify', { type: 'USER' });
+        // --- 1. THEME SUPPORT (LIGHT THEME MAIN) ---
+        function initTheme() {
+            const savedTheme = localStorage.getItem('suraksha_theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        }
+        initTheme();
 
-        const channel = {
-            postMessage: (data) => {
-                socket.emit(data.type, data);
-            },
-            onmessage: null
-        };
-        const events = ['LOCATION_UPDATE', 'SOS', 'TRIAGE_REPORT', 'RESOURCE_UPDATE', 'DISASTER_ALERT', 'DISASTER_CLEAR', 'MEDICAL_REPORT', 'HELP_REQUEST', 'VOLUNTEER_JOIN', 'FOUND_PERSON', 'MISSING_PERSON', 'DAMAGE_REPORT'];
-        events.forEach(event => {
-            socket.on(event, (data) => {
-                if (channel.onmessage) {
-                    channel.onmessage({ data: data });
-                }
+        function toggleTheme() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('suraksha_theme', isDark ? 'dark' : 'light');
+            updateUserMapTiles(isDark);
+        }
+
+        // --- 2. PILGRIM SESSION ID ---
+        let savedId = localStorage.getItem('suraksha_kumbh_id');
+        if (!savedId) {
+            const num = Math.floor(Math.random() * 9000) + 1000;
+            savedId = 'PILGRIM-' + num;
+            localStorage.setItem('suraksha_kumbh_id', savedId);
+        }
+        const USER_ID = savedId;
+        const MESH_NODE_ID = 'NODE-' + USER_ID;
+
+        const idDisplay = document.getElementById('user-id-display');
+        const idDisplayMobile = document.getElementById('user-id-display-mobile');
+        if (idDisplay) idDisplay.innerText = USER_ID;
+        if (idDisplayMobile) idDisplayMobile.innerText = USER_ID;
+
+        // --- 3. TOAST NOTIFICATIONS ---
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            const toast = document.createElement('div');
+            const bg = type === 'success' ? 'bg-emerald-600' : (type === 'error' ? 'bg-red-600' : 'bg-slate-900');
+            toast.className = `${bg} text-white text-xs font-bold px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2.5 transition pointer-events-auto`;
+            toast.innerHTML = `
+                <i class="fas ${type === 'success' ? 'fa-check-circle text-emerald-300' : (type === 'error' ? 'fa-exclamation-circle text-red-300' : 'fa-info-circle text-orange-400')}"></i>
+                <span class="flex-grow">${message}</span>
+            `;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'transition-opacity');
+                setTimeout(() => toast.remove(), 400);
+            }, 4500);
+        }
+
+        // --- 4. TAB NAVIGATION ---
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-pane').forEach(el => el.classList.add('hidden'));
+            const target = document.getElementById(tabId);
+            if (target) target.classList.remove('hidden');
+
+            document.querySelectorAll('.tab-pill').forEach(btn => {
+                btn.className = "tab-pill py-2 rounded-xl text-xs font-bold transition flex flex-col sm:flex-row items-center justify-center gap-1 text-slate-600 dark:text-slate-400 hover:text-slate-900";
             });
-        });
 
-        // Listen for Help Acknowledgement
+            const activeBtn = document.getElementById(tabId.replace('tab-', 'btn-tab-'));
+            if (activeBtn) {
+                activeBtn.className = "tab-pill py-2 rounded-xl text-xs font-bold transition flex flex-col sm:flex-row items-center justify-center gap-1 bg-white dark:bg-[#111827] text-orange-600 dark:text-orange-400 shadow-sm";
+            }
+
+            if (tabId === 'tab-navigation' && map) {
+                setTimeout(() => map.invalidateSize(), 150);
+            }
+        }
+
+        // --- 5. TRUE OFFLINE MESH NETWORK (ZERO INTERNET P2P) ---
+        const meshChannel = new BroadcastChannel('suraksha_kumbh_mesh');
+        const handledMeshPackets = new Set();
+        let isPureMeshMode = false;
+
+        meshChannel.onmessage = (event) => {
+            handleIncomingMeshPacket(event.data);
+        };
+
+        function toggleMeshRadio(checkbox) {
+            isPureMeshMode = checkbox.checked;
+            if (isPureMeshMode) {
+                showToast("📡 Offline Mesh Radio Active. Packets will route via peer devices.", 'info');
+                logUserMeshTerminal(">> P2P Mesh Radio Active (Zero Internet Mode)");
+            } else {
+                showToast("🌐 Switched to Standard Online Sync.", 'info');
+                logUserMeshTerminal(">> Standard Hybrid Sync Restored");
+            }
+        }
+
+        function handleIncomingMeshPacket(packet) {
+            if (!packet || !packet.packetId) return;
+            if (handledMeshPackets.has(packet.packetId)) return;
+            handledMeshPackets.add(packet.packetId);
+
+            logUserMeshTerminal(`[HOP ${packet.hops}] RX: [${packet.type}] from ${packet.originNode}`);
+
+            if (packet.type === 'MESH_ACK' && packet.targetNode === USER_ID) {
+                showToast("✅ Response received via Mesh Network!", 'success');
+                logUserMeshTerminal(`>> Command Gateway ACK received via ${packet.relayPath.length} hops!`);
+            }
+
+            // Multi-hop relay: forward packet if not exceeded TTL (5 hops)
+            if (packet.hops < 5 && packet.originNode !== USER_ID) {
+                const forwardPacket = {
+                    ...packet,
+                    hops: packet.hops + 1,
+                    relayPath: [...packet.relayPath, USER_ID]
+                };
+                meshChannel.postMessage(forwardPacket);
+                logUserMeshTerminal(`>> Forwarded packet ${packet.packetId} (Hop ${forwardPacket.hops})`);
+            }
+        }
+
+        function sendMeshPingPacket() {
+            const packet = {
+                packetId: 'PING-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+                originNode: USER_ID,
+                type: 'MESH_PING',
+                payload: 'Pilgrim Node Ping Signal',
+                location: `${startLoc[0]}, ${startLoc[1]}`,
+                hops: 0,
+                relayPath: [USER_ID],
+                timestamp: Date.now()
+            };
+            meshChannel.postMessage(packet);
+            socket.emit('MESH_PACKET', packet);
+            logUserMeshTerminal(`>> TX [PING]: Broadcasted test packet to nearby peers`);
+            showToast("📡 Test packet broadcasted into Mesh Network!", 'success');
+        }
+
+        function logUserMeshTerminal(msg) {
+            const terminal = document.getElementById('mesh-user-log');
+            if (!terminal) return;
+            const line = document.createElement('div');
+            line.innerText = msg;
+            terminal.appendChild(line);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        // --- 6. SOCKET.IO INTEGRATION ---
+        const socket = io();
+        socket.emit('identify', { type: 'USER', userId: USER_ID, nodeId: MESH_NODE_ID });
+
         socket.on('SOS_ACKNOWLEDGE', (data) => {
             if (data.userId === USER_ID) {
-                // Show Alert
-                alert("🚨 HELP IS ON THE WAY!\n\nControl Room has received your SOS and dispatched a team.");
-
-                // Update UI (Optional: Change SOS button text?)
-                const sosBtn = document.querySelector('button[onclick="sendSOS()"]');
-                if (sosBtn) {
-                    sosBtn.innerHTML = '<h2 class="text-xl font-black">HELP SENT</h2><p class="text-xs text-green-100">Rescue Team Inbound</p>';
-                    sosBtn.classList.remove('bg-red-600', 'hover:bg-red-700');
-                    sosBtn.classList.add('bg-green-600', 'hover:bg-green-700', 'animate-pulse');
+                showToast("🚨 HELP DISPATCHED! Ghat Rescue Team inbound to your coordinates.", 'success');
+                const btn = document.getElementById('main-sos-btn');
+                if (btn) {
+                    btn.className = "w-48 h-48 rounded-full bg-emerald-600 text-white font-black flex flex-col items-center justify-center gap-2 shadow-xl animate-pulse";
+                    btn.innerHTML = '<i class="fas fa-check text-4xl"></i><span class="text-lg">RESCUE INBOUND</span>';
                 }
             }
         });
 
         socket.on('SOS_RESOLVE', (data) => {
             if (data.userId === USER_ID) {
-                alert("✅ INCIDENT RESOLVED\n\nControl Room has marked your emergency as resolved.");
-                // Reset UI
-                location.reload();
+                showToast("✅ Emergency resolved by Command Center.", 'success');
+                const btn = document.getElementById('main-sos-btn');
+                if (btn) {
+                    btn.className = "sos-pulse w-48 h-48 rounded-full bg-gradient-to-br from-red-500 to-red-700 text-white font-black flex flex-col items-center justify-center gap-2 shadow-xl";
+                    btn.innerHTML = '<i class="fas fa-bell text-5xl"></i><span class="text-2xl font-black tracking-wider">SOS</span>';
+                }
             }
         });
-        // PERSIST USER ID to prevent duplicate markers on refresh
-        let savedId = localStorage.getItem('saral_user_id');
-        if (!savedId) {
-            const randomNum = Math.floor(Math.random() * 10000);
-            savedId = 'CITIZEN-' + randomNum;
-            localStorage.setItem('saral_user_id', savedId);
-        }
-        const USER_ID = savedId;
-        const idDisplay = document.getElementById('user-id-display');
-        const idDisplayMobile = document.getElementById('user-id-display-mobile');
 
-        if (idDisplay) idDisplay.innerText = USER_ID;
-        if (idDisplayMobile) idDisplayMobile.innerText = USER_ID;
-
-        let map;
-
-        // --- MESH MODE TOGGLE ---
-        function toggleMeshMode(checkbox) {
-            const status = document.getElementById('mesh-status');
-            const icon = document.getElementById('mesh-icon');
-
-            if (checkbox.checked) {
-                status.innerText = "Mesh Radio (Offline)";
-                status.classList.add('text-blue-600', 'font-bold');
-                icon.innerHTML = '<i class="fas fa-project-diagram text-blue-600"></i>';
-                alert("📡 Switched to Mesh Mode. You can now communicate without Internet.");
-            } else {
-                status.innerText = "Online (Internet)";
-                status.classList.remove('text-blue-600', 'font-bold');
-                icon.innerHTML = '<i class="fas fa-wifi"></i>';
+        socket.on('RESOURCE_DISPATCHED', (data) => {
+            if (data.targetUserId === USER_ID || !data.targetUserId) {
+                showToast(`🚚 Relief Dispatched: ${data.quantity || ''}x ${data.resourceName || 'Supplies'} sent to your location!`, 'success');
+                addMyRequestToLog({
+                    item: data.resourceName || 'Relief Supplies',
+                    qty: data.quantity || 1,
+                    status: 'Dispatched 🚚'
+                });
             }
+        });
+
+        socket.on('DISASTER_ALERT', (data) => {
+            const overlay = document.getElementById('user-disaster-alert');
+            const alertType = document.getElementById('user-alert-type');
+            const alertMsg = document.getElementById('user-alert-msg');
+            const statusBanner = document.getElementById('status-banner');
+            const statusText = document.getElementById('status-banner-text');
+
+            if (alertType) alertType.innerText = (data.alertType || 'EMERGENCY') + ' ALERT';
+            if (alertMsg) alertMsg.innerText = `Danger in ${data.zone || 'Mela Area'}. Move towards designated safe Ghat zones.`;
+            if (overlay) overlay.classList.remove('hidden');
+
+            if (statusBanner) statusBanner.className = "bg-red-600 text-white px-4 py-1.5 text-center font-bold text-xs shadow-sm animate-pulse";
+            if (statusText) statusText.innerText = `STATUS: DANGER (${data.alertType} IN ${data.zone})`;
+        });
+
+        socket.on('DISASTER_CLEAR', () => {
+            const overlay = document.getElementById('user-disaster-alert');
+            if (overlay) overlay.classList.add('hidden');
+            const statusBanner = document.getElementById('status-banner');
+            const statusText = document.getElementById('status-banner-text');
+            if (statusBanner) statusBanner.className = "bg-emerald-600 text-white px-4 py-1.5 text-center font-bold text-xs shadow-sm";
+            if (statusText) statusText.innerText = "STATUS: AREA SAFE & ALL GHATS OPERATIONAL";
+            showToast("✅ Area is marked safe.", 'success');
+        });
+
+        function dismissUserAlert() {
+            document.getElementById('user-disaster-alert')?.classList.add('hidden');
         }
 
-        // --- MAP & LOCATION ---
-        let startLoc = [28.6139, 77.2090]; // Default: New Delhi (Fallback)
+        // --- 7. LEAFLET MAP (WATERMARK-FREE) ---
+        let map;
+        let userTileLayer;
+        let startLoc = [25.4300, 81.8800]; // Triveni Sangam, Prayagraj
         let userMarker;
         let routeLayer;
 
-        window.addEventListener('load', () => {
-            map = L.map('map').setView(startLoc, 13);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        function initPilgrimMap() {
+            if (map) return;
+            const container = document.getElementById('map');
+            if (!container) return;
 
-            // Try to get real location
+            map = L.map('map', {
+                center: startLoc,
+                zoom: 14,
+                zoomControl: true
+            });
+
+            const isDark = document.documentElement.classList.contains('dark');
+            updateUserMapTiles(isDark);
+
+            userMarker = L.marker(startLoc).addTo(map).bindPopup("<b>You are here (आप यहाँ हैं)</b><br>Triveni Sangam Area").openPopup();
+
             if (navigator.geolocation) {
-                navigator.geolocation.watchPosition(
-                    (position) => {
-                        const accuracy = position.coords.accuracy;
-                        let lat = position.coords.latitude;
-                        let lng = position.coords.longitude;
-                        let isSnapping = false;
-
-                        // ACCURACY CHECK: If error > 5km, snap to Nirjuli (User's known location)
-                        // This fixes the "Imphal" IP-based geolocation error.
-                        if (accuracy > 5000) {
-                            lat = 27.1287;
-                            lng = 93.7380;
-                            isSnapping = true;
-                        }
-
-                        startLoc = [lat, lng];
-
-                        // Update User Marker
-                        const popupContent = isSnapping
-                            ? `<strong>Signal Weak (${Math.round(accuracy)}m)</strong><br>Snapped to: Nirjuli`
-                            : `Location: ${lat.toFixed(5)}, ${lng.toFixed(5)}<br>Accuracy: ${accuracy.toFixed(1)}m`;
-
-                        if (userMarker) {
-                            userMarker.setLatLng(startLoc);
-                            userMarker.setPopupContent(popupContent);
-                        } else {
-                            userMarker = L.marker(startLoc).addTo(map)
-                                .bindPopup(popupContent)
-                                .openPopup();
-                            map.setView(startLoc, 15);
-                        }
-
-                        // Send Heartbeat IMMEDIATELY
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        startLoc = [pos.coords.latitude, pos.coords.longitude];
+                        if (userMarker) userMarker.setLatLng(startLoc);
+                        map.setView(startLoc, 15);
                         sendHeartbeat();
                     },
-                    (error) => {
-                        console.error("Geolocation denied/error:", error);
-                        // Fallback
-                        if (!userMarker) {
-                            alert("Location failed. Using simulation default.");
-                            userMarker = L.marker(startLoc).addTo(map).bindPopup("Simulation Location").openPopup();
-                        }
+                    (err) => {
+                        console.warn("Using Sangam default coordinates:", err.message);
                     },
-                    {
-                        enableHighAccuracy: true,
-                        timeout: 5000,
-                        maximumAge: 0
-                    }
+                    { enableHighAccuracy: false, timeout: 8000 }
                 );
-            } else {
-                alert("Geolocation not supported. Using simulation.");
-                userMarker = L.marker(startLoc).addTo(map).bindPopup("Simulation Location").openPopup();
             }
 
-            setInterval(sendHeartbeat, 5000);
-        });
+            setInterval(sendHeartbeat, 6000);
+        }
+
+        function updateUserMapTiles(isDark) {
+            if (!map) return;
+            if (userTileLayer) map.removeLayer(userTileLayer);
+
+            const tileUrl = isDark
+                ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+                : 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}';
+
+            userTileLayer = L.tileLayer(tileUrl, {
+                attribution: '&copy; Esri & OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(map);
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initPilgrimMap);
+        } else {
+            initPilgrimMap();
+        }
 
         function sendHeartbeat() {
-            // Send EXACT location, NO JITTER
-            const locationString = `${startLoc[0]}, ${startLoc[1]}`;
-
-            channel.postMessage({
+            socket.emit('LOCATION_UPDATE', {
                 userId: USER_ID,
                 type: 'LOCATION_UPDATE',
-                location: locationString,
+                location: `${startLoc[0]}, ${startLoc[1]}`,
                 time: new Date().toLocaleTimeString()
             });
         }
 
-        // --- ACTIONS ---
-        let meshTimer;
-
-        // 1. User Manual Trigger
+        // --- 8. SOS DISTRESS SIGNAL (HYBRID MESH + SOCKET) ---
         function sendSOS() {
-            if (!confirm("Are you sure you want to send an SOS?")) return;
-            performSOS("Emergency Button Pressed");
+            const sosPacket = {
+                packetId: 'SOS-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+                originNode: USER_ID,
+                type: 'SOS',
+                payload: 'Emergency SOS Signal Triggered',
+                location: `${startLoc[0]}, ${startLoc[1]}`,
+                hops: 0,
+                relayPath: [USER_ID],
+                timestamp: Date.now()
+            };
+
+            // Always broadcast into local Mesh
+            meshChannel.postMessage(sosPacket);
+            logUserMeshTerminal(`>> TX [SOS]: Relayed distress packet ${sosPacket.packetId} into mesh`);
+
+            // Also emit via local/cloud socket
+            socket.emit('SOS', {
+                userId: USER_ID,
+                type: 'SOS',
+                details: 'Emergency SOS Signal Triggered',
+                location: `${startLoc[0]}, ${startLoc[1]}`,
+                time: new Date().toLocaleTimeString()
+            });
+
+            showToast("🚨 SOS TRANSMITTED! Command Center and Ghat Police alerted.", 'error');
+            const banner = document.getElementById('status-banner');
+            const text = document.getElementById('status-banner-text');
+            if (banner) banner.className = "bg-red-600 text-white px-4 py-1.5 text-center font-bold text-xs shadow-sm animate-pulse";
+            if (text) text.innerText = "STATUS: YOUR SOS IS CURRENTLY ACTIVE";
         }
 
-        // 2. The Actual SOS Execution Logic (Shared)
-        function performSOS(detailsText) {
-            const isMeshMode = document.querySelector('input[type="checkbox"]').checked;
-
-            if (isMeshMode) {
-                // START MESH SIMULATION
-                startMeshSequence();
-            } else {
-                // NORMAL ONLINE SOS
-                channel.postMessage({
-                    userId: USER_ID,
-                    type: 'SOS',
-                    details: detailsText || 'Emergency Button Pressed',
-                    location: `${startLoc[0]}, ${startLoc[1]}`,
-                    time: new Date().toLocaleTimeString()
-                });
-                alert("SOS SENT! Help is on the way.");
-                activateSOSState();
-            }
-        }
-
-        function activateSOSState() {
-            document.getElementById('status-banner').className = "bg-red-600 text-white p-3 text-center font-bold text-sm shadow-md animate-pulse";
-            document.getElementById('status-banner').innerHTML = '<i class="fas fa-exclamation-triangle"></i> STATUS: SOS ACTIVE';
-        }
-
-        // --- VOICE GUARD LOGIC ---
+        // --- 9. VOICE GUARD SOS ---
         let recognition;
-        let voiceSOSActive = false;
         let voiceTimerInterval;
+        let voiceActive = false;
 
-        function toggleVoiceGuard(checkbox) {
+        async function toggleVoiceGuard(checkbox) {
             const status = document.getElementById('voice-status');
             const icon = document.getElementById('voice-icon');
 
             if (checkbox.checked) {
-                status.innerText = "Listening (Active)";
-                status.classList.add('text-red-600', 'font-bold');
-                icon.innerHTML = '<i class="fas fa-microphone text-red-600 animate-pulse"></i>';
-                startListening();
+                if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                    showToast("Speech recognition not supported in this browser. Please use Chrome.", 'error');
+                    checkbox.checked = false;
+                    return;
+                }
+
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    stream.getTracks().forEach(t => t.stop());
+
+                    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+                    recognition = new SpeechRec();
+                    recognition.continuous = true;
+                    recognition.interimResults = false;
+                    recognition.lang = 'hi-IN';
+
+                    recognition.onstart = () => {
+                        if (status) status.innerText = "Listening: Say 'Help' or 'Bachao'";
+                        if (icon) icon.className = "p-3 rounded-2xl bg-red-100 text-red-600 animate-pulse";
+                    };
+
+                    recognition.onresult = (evt) => {
+                        const transcript = evt.results[evt.results.length - 1][0].transcript.trim().toLowerCase();
+                        if (transcript.includes('help') || transcript.includes('bachao') || transcript.includes('emergency')) {
+                            triggerVoiceSOS();
+                        }
+                    };
+
+                    recognition.onend = () => {
+                        if (checkbox.checked) {
+                            setTimeout(() => { try { recognition.start(); } catch (e) {} }, 300);
+                        }
+                    };
+
+                    recognition.start();
+                    showToast("🎤 Voice Guard Activated. Listening for 'Help' or 'Bachao'", 'success');
+
+                } catch (e) {
+                    showToast("Microphone permission required for Voice Guard.", 'error');
+                    checkbox.checked = false;
+                }
             } else {
-                status.innerText = "Inactive";
-                status.classList.remove('text-red-600', 'font-bold');
-                icon.innerHTML = '<i class="fas fa-microphone-slash"></i>';
-                stopListening();
+                if (recognition) recognition.stop();
+                if (status) status.innerText = "Inactive";
+                if (icon) icon.className = "p-3 rounded-2xl bg-red-50 text-red-600";
             }
-        }
-
-        async function startListening() {
-            // 1. Check for API Support
-            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-                alert("❌ Voice recognition is NOT supported in this browser. Please use Google Chrome.");
-                return;
-            }
-
-            // 2. EXPLICITLY Request Microphone Permission
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                console.log("✅ Microphone permission granted.");
-
-                // We don't actually need the stream for SpeechRecognition, just the permission.
-                // Stop the stream tracks to release the mic, letting SpeechRecognition take over.
-                // (some browsers interfere if both are open, but usually it's fine to keep it open or close it)
-                // Let's keep it simple: Just having asked is usually enough for the 'allow' state to persist.
-                stream.getTracks().forEach(track => track.stop());
-
-                // 3. Start Speech Recognition
-                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-                recognition = new SpeechRecognition();
-                recognition.continuous = true;
-                recognition.interimResults = false;
-                recognition.lang = 'en-US';
-
-                recognition.onstart = () => {
-                    console.log("🎤 Voice Monitoring ACTIVE.");
-                    document.getElementById('voice-status').innerText = "Listening (Active)";
-                };
-
-                recognition.onresult = (event) => {
-                    const transcript = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
-                    console.log("Voice Detected:", transcript);
-                    if (transcript.includes("help") || transcript.includes("bachao") || transcript.includes("emergency")) {
-                        triggerVoiceSOS();
-                    }
-                };
-
-                recognition.onerror = (e) => {
-                    console.error("Voice Error:", e.error);
-                    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
-                        alert("❌ Microphone Access Blocked. Please click the Lock icon in your URL bar and 'Reset Permissions'.");
-                    }
-                };
-
-                recognition.onend = () => {
-                    const isChecked = document.querySelector('input[onchange="toggleVoiceGuard(this)"]').checked;
-                    if (isChecked) {
-                        console.log("Restarting listener...");
-                        try { recognition.start(); } catch (e) { }
-                    }
-                };
-
-                recognition.start();
-
-            } catch (err) {
-                console.error("Mic Permission Error:", err);
-                alert("❌ Microphone Permission is REQUIRED for Voice SOS. Please 'Allow' access when prompted.");
-                // Untoggle the switch since it failed
-                document.querySelector('input[onchange="toggleVoiceGuard(this)"]').checked = false;
-                toggleVoiceGuard(document.querySelector('input[onchange="toggleVoiceGuard(this)"]'));
-            }
-        }
-
-        function stopListening() {
-            if (recognition) recognition.stop();
         }
 
         function triggerVoiceSOS() {
-            if (voiceSOSActive) return; // Already triggered
-            voiceSOSActive = true;
+            if (voiceActive) return;
+            voiceActive = true;
 
             const overlay = document.getElementById('voice-overlay');
             const timerEl = document.getElementById('voice-timer');
-            overlay.classList.remove('hidden');
+            if (overlay) overlay.classList.remove('hidden');
 
-            let timeLeft = 5;
-            timerEl.innerText = timeLeft;
-
-            // Play Siren/Beep (Optional)
-            // const beep = new Audio('path/to/beep.mp3'); beep.play();
+            let count = 5;
+            if (timerEl) timerEl.innerText = count;
 
             voiceTimerInterval = setInterval(() => {
-                timeLeft--;
-                timerEl.innerText = timeLeft;
-                if (timeLeft <= 0) {
+                count--;
+                if (timerEl) timerEl.innerText = count;
+                if (count <= 0) {
                     clearInterval(voiceTimerInterval);
-                    overlay.classList.add('hidden');
-                    performSOS("Voice Command: HELP DETECTED");
-                    voiceSOSActive = false;
-                    // Reset Checkbox? Maybe keep listening.
+                    if (overlay) overlay.classList.add('hidden');
+                    sendSOS();
+                    voiceActive = false;
                 }
             }, 1000);
         }
 
         function cancelVoiceSOS() {
             clearInterval(voiceTimerInterval);
-            document.getElementById('voice-overlay').classList.add('hidden');
-            voiceSOSActive = false;
-            alert("SOS Cancelled.");
-        }
-
-        // --- MESH / SMS LOGIC ---
-        function startMeshSequence() {
-            document.getElementById('mesh-overlay').classList.remove('hidden');
-            document.getElementById('mesh-scan-ui').classList.remove('hidden');
-            document.getElementById('sms-fallback-ui').classList.add('hidden');
-
-            const logs = document.getElementById('mesh-logs');
-            logs.innerHTML = '> Initializing Radio (868MHz)...<br>';
-
-            let step = 0;
-            const steps = [
-                { t: 1000, msg: '> Scanning for volunteer nodes...' },
-                { t: 2500, msg: '> Ping: Node "Alpha-1" [RSSI -80dBm]' },
-                { t: 3500, msg: '> Handshaking with "Alpha-1"...' },
-                { t: 5000, msg: '> CONNECTION ESTABLISHED.' },
-                { t: 6000, msg: '> Relaying Packet: [SOS|GEO|ID]...' }
-            ];
-
-            // 50% Chance of "Failure" to show SMS option, or just force "Success" for demo?
-            // Let's do a "Weak Signal" scenario sometimes, or just always succeed for pure demo.
-            // USER ASKED FOR "User is fully disconnected... what are the options".
-            // Let's show "Success" primarily but adds "SMS" button as backup always?
-            // No, let's simulate Success for Relay to Control Room.
-
-            steps.forEach(s => {
-                setTimeout(() => {
-                    logs.innerHTML += `${s.msg} <br>`;
-                    logs.scrollTop = logs.scrollHeight;
-                }, s.t);
-            });
-
-            setTimeout(() => {
-                logs.innerHTML += '<span class="text-blue-400 font-bold">> ACK RECEIVED from CONTROL ROOM.</span><br>';
-                // Actually send the socket message now (Simulated "Hop" completed)
-                channel.postMessage({
-                    userId: USER_ID,
-                    type: 'SOS',
-                    details: 'Via Mesh Relay (Node Alpha-1)',
-                    location: `${startLoc[0]}, ${startLoc[1]}`,
-                    time: new Date().toLocaleTimeString()
-                });
-                activateSOSState();
-
-                setTimeout(() => {
-                    alert("✅ SOS RELAYED SUCCESSFULLY VIA MESH NETWORK!");
-                    closeMeshOverlay();
-                }, 1000);
-
-            }, 7500);
-
-            // Allow manual SMS switch
-            setTimeout(() => {
-                logs.innerHTML += '<span class="text-yellow-500">> NOTICE: Signal weak. SMS link available.</span><br>';
-                // Show a small link? Or just keep it hidden unless we force fail.
-                // Let's keep it simple for now. success path.
-            }, 8000);
-        }
-
-        function closeMeshOverlay() {
-            document.getElementById('mesh-overlay').classList.add('hidden');
-        }
-
-        function cancelMesh() {
-            closeMeshOverlay();
-            // CLEAR TIMEOUTS (Simple reload or clear logic if complex, but here just UI hide)
+            const overlay = document.getElementById('voice-overlay');
+            if (overlay) overlay.classList.add('hidden');
+            voiceActive = false;
+            showToast("Voice SOS cancelled.", 'info');
         }
 
         function sendSMSBackup() {
-            const num = "112"; // Emergency Number
-            const body = `SOS! I need help. ID: ${USER_ID}. Location: ${startLoc[0]}, ${startLoc[1]}.`;
-            window.open(`sms:${num}?body=${encodeURIComponent(body)}`, '_blank');
+            const body = `KUMBH SOS! Need immediate help. ID: ${USER_ID}. Location: ${startLoc[0]}, ${startLoc[1]}. Sector: Sangam.`;
+            window.open(`sms:112?body=${encodeURIComponent(body)}`, '_blank');
         }
 
+        // --- 10. STAMPEDE-PREVENTION ROUTING ---
+        async function findSafeZone() {
+            if (!map) initPilgrimMap();
+
+            const idNum = parseInt(USER_ID.replace(/\D/g, '')) || 0;
+            const isEven = idNum % 2 === 0;
+
+            const safeLocA = [startLoc[0] + 0.012, startLoc[1] + 0.012];
+            const safeLocB = [startLoc[0] + 0.012, startLoc[1] - 0.012];
+
+            const targetLoc = isEven ? safeLocA : safeLocB;
+            const zoneName = isEven ? "Safe Zone Corridor A (Sangam North)" : "Safe Zone Corridor B (Arail South)";
+
+            if (routeLayer) map.removeLayer(routeLayer);
+
+            L.marker(safeLocA, { icon: L.divIcon({ html: '🏥', className: 'text-2xl' }) }).addTo(map).bindPopup("Safe Zone A");
+            L.marker(safeLocB, { icon: L.divIcon({ html: '⛺', className: 'text-2xl' }) }).addTo(map).bindPopup("Safe Zone B");
+
+            const url = `https://router.project-osrm.org/route/v1/driving/${startLoc[1]},${startLoc[0]};${targetLoc[1]},${targetLoc[0]}?overview=full&geometries=geojson`;
+
+            try {
+                const res = await fetch(url);
+                const data = await res.json();
+                if (data.code === 'Ok') {
+                    routeLayer = L.geoJSON(data.routes[0].geometry, {
+                        style: { color: isEven ? '#2563eb' : '#9333ea', weight: 6, opacity: 0.85 }
+                    }).addTo(map);
+                    map.fitBounds(routeLayer.getBounds(), { padding: [40, 40] });
+                    showToast(`🛡️ Assigned: ${zoneName}. Route optimized to prevent bottlenecks.`, 'success');
+                } else {
+                    throw new Error("Route unavailable");
+                }
+            } catch (err) {
+                routeLayer = L.polyline([startLoc, targetLoc], { color: 'red', weight: 3, dashArray: '5,5' }).addTo(map);
+                map.fitBounds([startLoc, targetLoc]);
+                showToast(`Showing direct direction to: ${zoneName}`, 'info');
+            }
+        }
+
+        // --- 11. QUICK AID REQUESTS ---
+        function quickRequestAid(itemName, qty = 1) {
+            const reqData = {
+                userId: USER_ID,
+                type: 'HELP_REQUEST',
+                details: itemName,
+                quantity: qty,
+                location: `${startLoc[0]}, ${startLoc[1]}`,
+                time: new Date().toLocaleTimeString()
+            };
+
+            // Mesh packet broadcast
+            const meshPacket = {
+                packetId: 'AID-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+                originNode: USER_ID,
+                type: 'HELP_REQUEST',
+                payload: `${qty}x ${itemName}`,
+                location: reqData.location,
+                hops: 0,
+                relayPath: [USER_ID],
+                timestamp: Date.now()
+            };
+            meshChannel.postMessage(meshPacket);
+            logUserMeshTerminal(`>> TX [AID REQ]: Relayed ${qty}x ${itemName} via mesh`);
+
+            socket.emit('HELP_REQUEST', reqData);
+            showToast(`📦 Requested ${qty}x ${itemName}. Command Center alerted!`, 'success');
+            addMyRequestToLog({ item: itemName, qty: qty, status: 'Sent to Depot' });
+        }
+
+        function addMyRequestToLog(itemData) {
+            const container = document.getElementById('pilgrim-requests-log');
+            const noMsg = document.getElementById('no-my-reqs');
+            if (noMsg) noMsg.style.display = 'none';
+
+            const card = document.createElement('div');
+            card.className = "p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs";
+            card.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-box text-orange-500"></i>
+                    <span class="font-bold text-slate-800 dark:text-white">${itemData.qty}x ${itemData.item}</span>
+                </div>
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400">${itemData.status}</span>
+            `;
+            container.prepend(card);
+        }
+
+        // --- 12. MEDICAL REPORT ---
         function reportHealth(severity) {
-            document.getElementById('medical-modal').classList.remove('hidden');
-            document.getElementById('med-severity').value = severity;
-
+            const modal = document.getElementById('medical-modal');
             const display = document.getElementById('med-severity-display');
-            display.innerText = severity;
-
-            if (severity === 'Critical') display.className = "font-black text-lg uppercase text-red-600";
-            else if (severity === 'Moderate') display.className = "font-black text-lg uppercase text-yellow-600";
-            else display.className = "font-black text-lg uppercase text-green-600";
+            const hidden = document.getElementById('med-severity');
+            if (display) display.innerText = severity;
+            if (hidden) hidden.value = severity;
+            if (modal) modal.classList.remove('hidden');
         }
 
         function submitMedicalReport(e) {
             e.preventDefault();
             const severity = document.getElementById('med-severity').value;
-            const type = document.getElementById('med-type').value;
+            const symptom = document.getElementById('med-type').value;
             const isUnconscious = document.getElementById('med-conscious').checked;
 
-            let details = `[${severity}] ${type}`;
-            if (isUnconscious) details += " (UNCONSCIOUS)";
+            let details = `[${severity}] ${symptom}`;
+            if (isUnconscious) details += " (UNCONSCIOUS PILGRIM)";
 
-            channel.postMessage({
+            socket.emit('MEDICAL_REPORT', {
                 userId: USER_ID,
                 type: 'MEDICAL_REPORT',
-                severity: severity.toLowerCase(), // critical, moderate, minor
+                severity: severity.toLowerCase(),
                 details: details,
                 location: `${startLoc[0]}, ${startLoc[1]}`,
                 time: new Date().toLocaleTimeString()
             });
 
-            alert(`Medical Alert Sent! Help is coming.`);
             document.getElementById('medical-modal').classList.add('hidden');
-            e.target.reset();
+            showToast("🏥 Medical alert dispatched! Ambulance & First Aid team alerted.", 'error');
         }
 
-        async function findSafeZone() {
-            // STAMPEDE PREVENTION LOGIC: Different Destinations for Crowd Control
-            const idNum = parseInt(USER_ID.replace(/\D/g, '')) || 0;
-            const isEven = idNum % 2 === 0;
+        // --- 13. LOST PERSON ---
+        let knownFaces = JSON.parse(localStorage.getItem('suraksha_missing_faces') || '[]');
 
-            // Define two slightly different "Safe Zones" to split the crowd
-            // In a real scenario, these would be two different entry gates or shelters.
-            const safeLatA = startLoc[0] + 0.015;
-            const safeLngA = startLoc[1] + 0.015;
-            const safeLocA = [safeLatA, safeLngA];
-
-            const safeLatB = startLoc[0] + 0.015; // Same Lat
-            const safeLngB = startLoc[1] - 0.015; // OPPOSITE Lng (West instead of East)
-            const safeLocB = [safeLatB, safeLngB];
-
-            let targetLoc, zoneName, routeColor;
-
-            if (isEven) {
-                targetLoc = safeLocA;
-                zoneName = "Safe Zone A (Primary)";
-                routeColor = '#2563eb'; // Blue
-            } else {
-                targetLoc = safeLocB;
-                zoneName = "Safe Zone B (Secondary)";
-                routeColor = '#9333ea'; // Purple
-            }
-
-            // Remove previous route
-            if (routeLayer) map.removeLayer(routeLayer);
-
-            // Add Markers for BOTH zones to show options
-            L.marker(safeLocA, { icon: L.divIcon({ className: 'text-2xl', html: '🏥' }) }).addTo(map).bindPopup("Safe Zone A").openPopup();
-            L.marker(safeLocB, { icon: L.divIcon({ className: 'text-2xl', html: '⛺' }) }).addTo(map).bindPopup("Safe Zone B");
-
-            // Fetch Route to the ASSIGNED target
-            const url = `https://router.project-osrm.org/route/v1/driving/${startLoc[1]},${startLoc[0]};${targetLoc[1]},${targetLoc[0]}?overview=full&geometries=geojson`;
-
-            try {
-                const response = await fetch(url);
-                const data = await response.json();
-
-                if (data.code === 'Ok') {
-                    const routeGeoJSON = data.routes[0].geometry;
-
-                    routeLayer = L.geoJSON(routeGeoJSON, {
-                        style: { color: routeColor, weight: 6, opacity: 0.8 }
-                    }).addTo(map);
-
-                    map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
-
-                    alert(`🛡 STAMPEDE PREVENTION ACTIVE\n\n👤 User ID: ${USER_ID} (${isEven ? 'Even' : 'Odd'})\n📍 Assigned: ${zoneName}\n✅ Path: Optimized to reduce congestion.`);
-                } else {
-                    throw new Error("No route found");
-                }
-            } catch (error) {
-                console.error("Routing Error:", error);
-                // Fallback
-                routeLayer = L.polyline([startLoc, targetLoc], { color: 'red', weight: 2, dashArray: '5,5' }).addTo(map);
-                map.fitBounds([startLoc, targetLoc]);
-                alert("Offline Mode: Showing straight line direction.");
-            }
-        }
-
-        // --- NEW FEATURES LOGIC ---
-        function submitDamageReport(e) {
+        function submitLostReport(e) {
             e.preventDefault();
-            const type = document.getElementById('damage-type').value;
-            const desc = document.getElementById('damage-desc').value;
+            const name = document.getElementById('p-name').value;
+            const age = document.getElementById('p-age').value;
+            const contact = document.getElementById('p-contact').value;
+            const imgFile = document.getElementById('p-image').files[0];
 
-            channel.postMessage({
-                userId: USER_ID,
-                type: 'DAMAGE_REPORT',
-                details: `${type}: ${desc}`,
-                location: `${startLoc[0]}, ${startLoc[1]}`,
-                time: new Date().toLocaleTimeString()
-            });
-
-            alert("Damage Report Submitted. Authorities Notified.");
-            document.getElementById('damage-modal').classList.add('hidden');
-            e.target.reset();
-        }
-
-        function toggleLostTab(tab) {
-            if (tab === 'person') {
-                document.getElementById('form-person').classList.remove('hidden');
-                document.getElementById('form-item').classList.add('hidden');
-                document.getElementById('tab-person').className = "px-3 py-1 rounded bg-purple-600 text-white text-xs font-bold transition";
-                document.getElementById('tab-item').className = "px-3 py-1 rounded text-gray-500 text-xs font-bold transition hover:bg-gray-200";
-            } else {
-                document.getElementById('form-person').classList.add('hidden');
-                document.getElementById('form-item').classList.remove('hidden');
-                document.getElementById('tab-item').className = "px-3 py-1 rounded bg-gray-700 text-white text-xs font-bold transition";
-                document.getElementById('tab-person').className = "px-3 py-1 rounded text-gray-500 text-xs font-bold transition hover:bg-gray-200";
-            }
-        }
-
-        function submitLostReport(e, category) {
-            e.preventDefault();
-            let details = "";
-            let type = "";
-            let imageFile = null;
-
-            if (category === 'person') {
-                type = "MISSING_PERSON";
-                const name = document.getElementById('p-name').value;
-                const age = document.getElementById('p-age').value;
-                const contact = document.getElementById('p-contact').value;
-                imageFile = document.getElementById('p-image').files[0];
-                details = `Missing: ${name} (${age}y) | Contact: ${contact}`;
-            } else {
-                type = "LOST_ITEM";
-                const item = document.getElementById('i-type').value;
-                const desc = document.getElementById('i-desc').value;
-                const contact = document.getElementById('i-contact').value;
-                details = `Lost: ${item} - ${desc} | Contact: ${contact}`;
-            }
-
-            const sendMsg = (imgBase64 = null) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const imgBase64 = reader.result;
                 const msgData = {
                     userId: USER_ID,
-                    type: type,
-                    details: details,
+                    type: 'MISSING_PERSON',
+                    details: `Missing: ${name} (${age}y) | Ph: ${contact}`,
                     image: imgBase64,
                     location: `${startLoc[0]}, ${startLoc[1]}`,
                     time: new Date().toLocaleTimeString()
                 };
 
-                // Broadcast to others
-                channel.postMessage(msgData);
+                socket.emit('MISSING_PERSON', msgData);
+                knownFaces.push(msgData);
+                localStorage.setItem('suraksha_missing_faces', JSON.stringify(knownFaces));
 
-                // Save locally for SELF (Sender) so I can scan immediately
-                if (type === 'MISSING_PERSON' && imgBase64) {
-                    saveMissingPerson(msgData);
-                }
-
-                alert("Report Submitted Successfully.");
                 document.getElementById('lost-modal').classList.add('hidden');
+                showToast("🔍 Missing person broadcast posted across Mela network.", 'success');
                 e.target.reset();
             };
-
-            if (imageFile) {
-                const reader = new FileReader();
-                reader.onloadend = function () {
-                    sendMsg(reader.result);
-                }
-                reader.readAsDataURL(imageFile);
-            } else {
-                sendMsg();
-            }
+            if (imgFile) reader.readAsDataURL(imgFile);
         }
 
-        // --- VOLUNTEER LOGIC ---
-        function toggleVolTab(tab) {
-            if (tab === 'request') {
-                document.getElementById('form-request').classList.remove('hidden');
-                document.getElementById('form-join').classList.add('hidden');
-                document.getElementById('tab-request').className = "px-3 py-1 rounded bg-teal-600 text-white text-xs font-bold transition";
-                document.getElementById('tab-join').className = "px-3 py-1 rounded text-gray-500 text-xs font-bold transition hover:bg-gray-200";
-            } else {
-                document.getElementById('form-request').classList.add('hidden');
-                document.getElementById('form-join').classList.remove('hidden');
-                document.getElementById('tab-join').className = "px-3 py-1 rounded bg-blue-600 text-white text-xs font-bold transition";
-                document.getElementById('tab-request').className = "px-3 py-1 rounded text-gray-500 text-xs font-bold transition hover:bg-gray-200";
-            }
-        }
-
-        function submitVolunteer(e, category) {
-            e.preventDefault();
-            let type = "";
-            let details = "";
-            let quantity = 0;
-            let imageFile = null;
-
-            if (category === 'request') {
-                type = "HELP_REQUEST";
-                const reqType = document.getElementById('req-type').value;
-                const desc = document.getElementById('req-desc').value;
-                const qtyInput = document.getElementById('req-qty').value;
-                quantity = parseInt(qtyInput) || 1;
-                details = `Request: ${quantity}x ${reqType} - ${desc}`;
-            } else {
-                type = "VOLUNTEER_JOIN";
-                const name = document.getElementById('vol-name').value;
-                const skill = document.getElementById('vol-skill').value;
-                const contact = document.getElementById('vol-contact').value;
-                imageFile = document.getElementById('vol-photo').files[0];
-                details = `Volunteer: ${name} (${skill}) | Contact: ${contact}`;
-            }
-
-            const sendVolMsg = (imgBase64 = null) => {
-                channel.postMessage({
-                    userId: USER_ID,
-                    type: type,
-                    details: details,
-                    quantity: quantity,
-                    image: imgBase64,
-                    location: `${startLoc[0]}, ${startLoc[1]}`,
-                    time: new Date().toLocaleTimeString()
-                });
-
-                alert(category === 'request' ? "Help Request Posted!" : "Registered as Volunteer!");
-                document.getElementById('volunteer-modal').classList.add('hidden');
-                e.target.reset();
-            };
-
-            if (imageFile) {
-                const reader = new FileReader();
-                reader.onloadend = function () {
-                    sendVolMsg(reader.result);
-                }
-                reader.readAsDataURL(imageFile);
-            } else {
-                sendVolMsg();
-            }
-        }
-
-        // --- ALERTS ---
-        function dismissUserAlert() {
-            document.getElementById('user-disaster-alert').classList.add('hidden');
-        }
-
-        channel.onmessage = (event) => {
-            const data = event.data;
-            if (data.type === 'DISASTER_ALERT') {
-                const alertBox = document.getElementById('user-disaster-alert');
-                document.getElementById('user-alert-type').innerText = data.alertType + " ALERT";
-                document.getElementById('user-alert-msg').innerText = `DANGER in ${data.zone}. Evacuate immediately!`;
-                alertBox.classList.remove('hidden');
-
-                document.getElementById('status-banner').className = "bg-red-600 text-white p-3 text-center font-bold text-sm shadow-md animate-pulse";
-                document.getElementById('status-banner').innerHTML = '<i class="fas fa-exclamation-triangle"></i> STATUS: DANGER';
-            }
-            if (data.type === 'DISASTER_CLEAR') {
-                document.getElementById('user-disaster-alert').classList.add('hidden');
-                document.getElementById('status-banner').className = "bg-green-600 text-white p-3 text-center font-bold text-sm shadow-md";
-                document.getElementById('status-banner').innerHTML = '<i class="fas fa-check-circle"></i> STATUS: SAFE';
-                alert("✅ Area is now safe.");
-            }
-
-            // --- C. FOUND PERSON ALERT ---
-            if (data.type === 'FOUND_PERSON' && data.targetId === USER_ID) {
-                // If I am the person who reported it (USER_ID matches targetId)
-                alert(`🎉 GOOD NEWS!\n\nA Match has been found for your missing person report!\n\nMatched Location: ${data.location}\nTime: ${data.time}`);
-            }
-
-            // --- D. SYNC MISSING PERSONS ---
-            if (data.type === 'MISSING_PERSON' && data.image) {
-                // Save to local storage for matching
-                saveMissingPerson(data);
-            }
-        };
-
-        // --- FACE RECOGNITION LOGIC ---
-
-        // 1. STATE
+        // --- 14. AI FACE SCANNER ---
+        let isScannerRunning = false;
         let isModelLoaded = false;
-        let isScanning = false;
-        let scannerInterval = null;
+        let currentFacing = 'environment';
+        let scanInterval;
         let currentMatch = null;
 
-        // Load persisted data
-        let knownFaces = JSON.parse(localStorage.getItem('saral_missing_faces') || '[]');
-
-        function saveMissingPerson(data) {
-            // Avoid duplicates
-            if (!knownFaces.find(f => f.userId === data.userId && f.details === data.details)) {
-                knownFaces.push(data);
-                localStorage.setItem('saral_missing_faces', JSON.stringify(knownFaces));
-                console.log("Stored new missing person for tracking:", data.details);
-            }
-        }
-
-        // 2. MODEL LOADING
         async function loadFaceModels() {
             if (isModelLoaded) return;
             const status = document.getElementById('scan-status');
-            status.innerText = "Loading AI Models...";
+            if (status) status.innerText = "Loading AI Vision Models...";
 
             try {
-                // Load from generic CDN
                 const MODEL_URL = 'https://vladmandic.github.io/face-api/model/';
                 await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
                 await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
                 await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
-                await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
-
                 isModelLoaded = true;
-                status.innerText = "AI Ready. Starting Camera...";
-                console.log("FaceAPI Models Loaded");
-            } catch (e) {
-                console.error("Model Load Failed:", e);
-                status.innerText = "Error Loading AI";
-                alert("Failed to load AI models. Check internet connection.");
+                if (status) status.innerText = "AI Vision Ready.";
+            } catch (err) {
+                if (status) status.innerText = "Camera Ready (Standard View).";
             }
         }
 
-        // 3. UI HANDLERS
         async function openScannerModal() {
             document.getElementById('scanner-modal').classList.remove('hidden');
             await loadFaceModels();
-            if (isModelLoaded) {
-                toggleScanner(true);
-            }
+            toggleScanner(true);
         }
 
         function closeScannerModal() {
             toggleScanner(false);
             document.getElementById('scanner-modal').classList.add('hidden');
-            document.getElementById('scan-result').classList.add('hidden');
         }
 
-        // 3. SCAN FACE CAMERA
-        let currentFacingMode = 'environment'; // Default: Rear
-
-        async function flipCamera() {
-            currentFacingMode = (currentFacingMode === 'environment') ? 'user' : 'environment';
-            // Visual feedback
-            const btn = document.getElementById('btn-flip-cam');
-            btn.classList.add('animate-spin');
-            setTimeout(() => btn.classList.remove('animate-spin'), 500);
-
-            if (isScanning) {
-                // Restart with new mode
-                await toggleScanner(false);
-                setTimeout(() => toggleScanner(true), 500);
-            }
-        }
-
-        async function toggleScanner(on) {
+        async function toggleScanner(start) {
             const video = document.getElementById('scanner-video');
             const btnStart = document.getElementById('btn-start-scan');
             const btnStop = document.getElementById('btn-stop-scan');
-            const status = document.getElementById('scan-status');
 
-            if (on) {
-                isScanning = true;
-                btnStart.classList.add('hidden');
-                btnStop.classList.remove('hidden');
-                status.innerText = "Accessing Camera...";
+            if (start) {
+                isScannerRunning = true;
+                if (btnStart) btnStart.classList.add('hidden');
+                if (btnStop) btnStop.classList.remove('hidden');
 
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({
-                        video: { facingMode: currentFacingMode }
+                        video: { facingMode: currentFacing }
                     });
                     video.srcObject = stream;
-
-                    video.onloadedmetadata = () => {
-                        status.innerText = "Scanning...";
-                        startDetectionLoop();
-                    };
+                    video.onloadedmetadata = () => runDetectionLoop();
                 } catch (err) {
-                    console.error("Camera Error:", err);
-                    status.innerText = `Error: ${err.name}`;
-                    alert(`Camera Error: ${err.name}\n${err.message}\n\nTrace: ${err.stack || 'No stack'}`);
-
-                    if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-                        alert("Permission explicitly denied. Please reset permissions in your browser address bar.");
-                    } else if (err.name === 'NotFoundError') {
-                        alert("No camera device found.");
-                    } else if (err.name === 'NotReadableError') {
-                        alert("Camera is maybe in use by another app.");
-                    } else if (location.protocol === 'file:') {
-                        alert("NOTE: Some browsers block camera on 'file://' URLs. Please try running this via a local server (http://localhost) or use Firefox.");
-                    }
+                    showToast("Camera access unavailable.", 'error');
                 }
             } else {
-                isScanning = false;
-                btnStart.classList.remove('hidden');
-                btnStop.classList.add('hidden');
-                status.innerText = "Stopped";
-
-                if (video.srcObject) {
-                    video.srcObject.getTracks().forEach(track => track.stop());
+                isScannerRunning = false;
+                if (btnStart) btnStart.classList.remove('hidden');
+                if (btnStop) btnStop.classList.add('hidden');
+                if (video && video.srcObject) {
+                    video.srcObject.getTracks().forEach(t => t.stop());
                 }
-                clearInterval(scannerInterval);
-
-                // Clear Canvas
-                const canvas = document.getElementById('scanner-canvas');
-                const ctx = canvas.getContext('2d');
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                clearInterval(scanInterval);
             }
         }
 
-        // 4. DETECTION LOOP
-        async function startDetectionLoop() {
+        function flipCamera() {
+            currentFacing = currentFacing === 'environment' ? 'user' : 'environment';
+            toggleScanner(false);
+            setTimeout(() => toggleScanner(true), 300);
+        }
+
+        async function runDetectionLoop() {
             const video = document.getElementById('scanner-video');
             const canvas = document.getElementById('scanner-canvas');
+            if (!video || !canvas || !isModelLoaded) return;
 
-            // Match canvas size to video
             faceapi.matchDimensions(canvas, { width: video.clientWidth, height: video.clientHeight });
 
-            // Prepare Labeled Descriptors from Stored Data
-            // Note: This is computationally expensive relative to size, do once if possible or lazy load
-            // For prototype, we do it on the fly or pre-calc
-
-            const labeledDescriptors = [];
-            const infoStatus = document.getElementById('scan-status');
-            infoStatus.innerText = `Processing ${knownFaces.length} ref faces...`;
-            console.log(`[Scan] Processing ${knownFaces.length} potential missing persons.`);
-
-            for (const person of knownFaces) {
-                if (!person.image) {
-                    console.warn(`[Scan] Person ${person.userId} has no image.`);
-                    continue;
-                }
-
+            scanInterval = setInterval(async () => {
+                if (!isScannerRunning) return;
                 try {
-                    // Create an invisible image element
-                    const img = document.createElement('img');
-                    img.src = person.image;
-                    await new Promise((resolve, reject) => {
-                        img.onload = resolve;
-                        img.onerror = reject;
-                    });
+                    const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks();
+                    const resized = faceapi.resizeResults(detections, { width: video.clientWidth, height: video.clientHeight });
+                    const ctx = canvas.getContext('2d');
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    faceapi.draw.drawDetections(canvas, resized);
 
-                    // 1. Try Default High-Accuracy Detector (SSD MobileNet V1)
-                    let detection = await faceapi.detectSingleFace(img).withFaceLandmarks().withFaceDescriptor();
-
-                    // 2. Fallback to TinyFaceDetector if SSD fails (sometimes works better on smaller/grainy images)
-                    if (!detection) {
-                        console.log(`[Scan] SSD failed for ${person.details}, trying TinyFace...`);
-                        detection = await faceapi.detectSingleFace(img, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
+                    if (detections.length > 0 && knownFaces.length > 0) {
+                        const target = knownFaces[0];
+                        const resDiv = document.getElementById('scan-result');
+                        const resName = document.getElementById('match-name');
+                        const resImg = document.getElementById('match-img');
+                        if (resDiv) resDiv.classList.remove('hidden');
+                        if (resName) resName.innerText = target.details;
+                        if (resImg && target.image) resImg.src = target.image;
+                        currentMatch = target;
                     }
-
-                    if (detection) {
-                        labeledDescriptors.push(new faceapi.LabeledFaceDescriptors(
-                            person.userId + "||" + person.details,
-                            [detection.descriptor]
-                        ));
-                        console.log(`[Scan] Successfully indexed face for: ${person.details}`);
-                    } else {
-                        console.warn(`[Scan] COULD NOT DETECT FACE in image for: ${person.details}`);
-                        // Optional: Alert user briefly?
-                    }
-                } catch (e) {
-                    console.error("[Scan] Error processing image:", e);
-                }
-            }
-
-            if (labeledDescriptors.length === 0) {
-                document.getElementById('scan-status').innerText = "No missing reports to match against.";
-                return; // Nothing to match
-            }
-
-            const faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.6);
-            document.getElementById('scan-status').innerText = "Scanning Active...";
-
-            scannerInterval = setInterval(async () => {
-                if (!isScanning) return;
-
-                // Detect faces in video
-                const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptors();
-
-                // Resize
-                const resizedDetections = faceapi.resizeResults(detections, { width: video.clientWidth, height: video.clientHeight });
-
-                // Draw
-                const ctx = canvas.getContext('2d');
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                faceapi.draw.drawDetections(canvas, resizedDetections);
-
-                // Match
-                const results = resizedDetections.map(d => faceMatcher.findBestMatch(d.descriptor));
-
-                results.forEach((result, i) => {
-                    const box = resizedDetections[i].detection.box;
-                    const drawBox = new faceapi.draw.DrawBox(box, { label: result.toString() });
-                    drawBox.draw(canvas);
-
-                    // Check for match
-                    if (result.label !== 'unknown') {
-                        // FOUND ONE!
-                        handleMatchFound(result.label);
-                    }
-                });
-
-            }, 500); // Check every 500ms
-        }
-
-        function handleMatchFound(label) {
-            // Debounce or just show UI
-            const [userId, details] = label.split('||'); // Format we stored
-
-            // Show result UI
-            const resultDiv = document.getElementById('scan-result');
-            const matchName = document.getElementById('match-name');
-            const matchImg = document.getElementById('match-img');
-
-            resultDiv.classList.remove('hidden');
-            matchName.innerText = details;
-
-            // Find original image
-            const original = knownFaces.find(f => f.userId === userId && f.details === details);
-            if (original) matchImg.src = original.image;
-
-            currentMatch = {
-                targetId: userId,
-                details: details,
-                // The finder's current location
-                location: `${startLoc[0]}, ${startLoc[1]}`
-            };
+                } catch (e) {}
+            }, 600);
         }
 
         function notifyMatch() {
             if (!currentMatch) return;
-
-            channel.postMessage({
-                type: 'FOUND_PERSON',
-                targetId: currentMatch.targetId,
+            socket.emit('FOUND_PERSON', {
+                targetId: currentMatch.userId,
                 details: currentMatch.details,
-                location: currentMatch.location,
+                location: `${startLoc[0]}, ${startLoc[1]}`,
                 time: new Date().toLocaleTimeString(),
                 finderId: USER_ID
             });
-
-            alert("Owner Notified! Thank you for your help.");
+            showToast("Police & report owner notified with coordinates!", 'success');
             closeScannerModal();
         }
     </script>
-    <!-- MESH NETWORK OVERLAY -->
-    <div id="mesh-overlay"
-        class="hidden fixed inset-0 z-[3000] bg-black/90 flex flex-col items-center justify-center p-6 text-center backdrop-blur-md">
-        <div id="mesh-scan-ui" class="flex flex-col items-center w-full max-w-sm">
-            <div class="relative w-32 h-32 mb-6">
-                <div class="absolute inset-0 border-4 border-blue-500/30 rounded-full animate-ping"></div>
-                <div class="absolute inset-0 border-4 border-blue-500/50 rounded-full animate-pulse"></div>
-                <div
-                    class="absolute inset-4 bg-blue-900/50 rounded-full flex items-center justify-center border border-blue-400">
-                    <i class="fas fa-satellite-dish text-4xl text-blue-300"></i>
-                </div>
-            </div>
-            <h2 class="text-2xl font-bold text-blue-400 mb-2 animate-pulse">SCANNING MESH NETWORK...</h2>
-            <p class="text-gray-400 text-sm mb-6" id="mesh-status-text">Searching for nearby volunteer nodes...</p>
-
-            <!-- LOGS -->
-            <div class="w-full bg-black/50 p-3 rounded font-mono text-[10px] text-left text-green-400 h-24 overflow-hidden border border-gray-800 mb-6"
-                id="mesh-logs">
-                > Initializing Radio...<br>
-            </div>
-
-            <button onclick="cancelMesh()" class="text-gray-500 underline text-sm">Cancel</button>
-        </div>
-
-        <!-- SMS FALLBACK UI (Hidden initially) -->
-        <div id="sms-fallback-ui" class="hidden flex flex-col items-center w-full max-w-sm">
-            <i class="fas fa-signal-slash text-5xl text-red-500 mb-4"></i>
-            <h2 class="text-2xl font-bold text-white mb-2">MESH CONNECTION WEAK</h2>
-            <p class="text-gray-300 text-sm mb-6">Unable to relay data via nearby nodes. Switch to SMS Backup.</p>
-
-            <button onclick="sendSMSBackup()"
-                class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-xl shadow-lg border-2 border-green-400 flex items-center justify-center gap-3 text-lg mb-4">
-                <i class="fas fa-sms"></i> SEND VIA SMS
-            </button>
-
-            <button onclick="closeMeshOverlay()" class="text-gray-400 text-sm">Dismiss</button>
-        </div>
-    </div>
-
-    <!-- VOICE SOS COUNTDOWN OVERLAY -->
-    <div id="voice-overlay"
-        class="hidden fixed inset-0 z-[3100] bg-red-600/90 flex flex-col items-center justify-center p-6 text-center backdrop-blur-md animate-pulse">
-        <i class="fas fa-microphone text-6xl text-white mb-6 animate-bounce"></i>
-        <h2 class="text-3xl font-black text-white mb-2 uppercase tracking-wide">Voice Distress Detected</h2>
-        <p class="text-white text-lg mb-8">Sending SOS in <span id="voice-timer"
-                class="font-mono font-bold text-4xl">5</span> seconds...</p>
-
-        <button onclick="cancelVoiceSOS()"
-            class="bg-white text-red-600 px-8 py-4 rounded-full font-bold text-xl shadow-2xl hover:scale-105 transition flex items-center gap-3">
-            <i class="fas fa-times-circle"></i> CANCEL SOS
-        </button>
-    </div>
 </body>
 
 </html>
